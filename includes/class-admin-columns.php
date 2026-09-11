@@ -2,10 +2,12 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Admin list-table customizations for course/unit/lesson — hides the
- * Date column by default (still available via Screen Options), and
- * adds relational columns (Course/Unit/Public) so staff don't have to
- * open each post to see how it fits into the hierarchy.
+ * Admin list-table customizations for course/unit/lesson — removes the
+ * Date column entirely on Courses, hides it by default on Lessons/Units
+ * (still available via Screen Options), and adds relational columns
+ * (Course/Unit/Public/Lesson Order) so staff don't have to open each
+ * post to see how it fits into the hierarchy. Also swaps the Lessons
+ * screen's built-in month/year filter for a more useful Course filter.
  */
 class Film_School_Admin_Columns {
 
@@ -23,6 +25,9 @@ class Film_School_Admin_Columns {
         add_filter( 'manage_edit-lesson_sortable_columns', [ __CLASS__, 'lesson_sortable_columns' ] );
         add_filter( 'posts_join', [ __CLASS__, 'join_course_title_for_sorting' ], 10, 2 );
         add_filter( 'posts_orderby', [ __CLASS__, 'orderby_course_title' ], 10, 2 );
+        add_action( 'restrict_manage_posts', [ __CLASS__, 'render_lesson_course_filter' ] );
+        add_action( 'pre_get_posts', [ __CLASS__, 'filter_lessons_by_course' ] );
+        add_filter( 'disable_months_dropdown', [ __CLASS__, 'disable_lesson_months_dropdown' ], 10, 2 );
 
         // Courses: Public Course column.
         add_filter( 'manage_course_posts_columns', [ __CLASS__, 'course_columns' ] );
@@ -37,7 +42,7 @@ class Film_School_Admin_Columns {
     }
 
     public static function hide_date_by_default( array $hidden, $screen ): array {
-        if ( in_array( $screen->id, [ 'edit-lesson', 'edit-course', 'edit-unit' ], true ) ) {
+        if ( in_array( $screen->id, [ 'edit-lesson', 'edit-unit' ], true ) ) {
             $hidden[] = 'date';
         }
         return $hidden;
@@ -72,8 +77,9 @@ class Film_School_Admin_Columns {
 
     public static function lesson_columns( array $columns ): array {
         return self::insert_after_title( $columns, [
-            'film_school_course' => 'Course',
-            'film_school_unit'   => 'Unit',
+            'film_school_course'       => 'Course',
+            'film_school_unit'         => 'Unit',
+            'film_school_lesson_order' => 'Lesson Order',
         ] );
     }
 
@@ -88,6 +94,45 @@ class Film_School_Admin_Columns {
             echo self::linked_title( $unit_id );
             printf( '<div class="hidden" id="film_school_lesson_unit_inline_%d">%s</div>', esc_attr( $post_id ), esc_html( $unit_id ) );
         }
+        if ( 'film_school_lesson_order' === $column ) {
+            echo esc_html( get_field( 'lesson_order', $post_id ) ?: '—' );
+        }
+    }
+
+    /**
+     * Replaces the built-in month/year filter (hidden on this screen —
+     * see disable_lesson_months_dropdown) with a Course filter, since
+     * staff manage lessons by course far more often than by date.
+     */
+    public static function render_lesson_course_filter(): void {
+        global $typenow;
+        if ( 'lesson' !== $typenow ) {
+            return;
+        }
+        $selected = isset( $_GET['film_school_filter_course'] ) ? absint( $_GET['film_school_filter_course'] ) : 0;
+        ?>
+        <select name="film_school_filter_course">
+            <option value="">All Courses</option>
+            <?php foreach ( get_posts( [ 'post_type' => 'course', 'numberposts' => -1 ] ) as $course ) : ?>
+                <option value="<?php echo esc_attr( $course->ID ); ?>" <?php selected( $selected, (int) $course->ID ); ?>><?php echo esc_html( $course->post_title ); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?php
+    }
+
+    public static function filter_lessons_by_course( $query ): void {
+        if ( ! is_admin() || ! $query->is_main_query() || 'lesson' !== $query->get( 'post_type' ) ) {
+            return;
+        }
+        if ( empty( $_GET['film_school_filter_course'] ) ) {
+            return;
+        }
+        $query->set( 'meta_key', 'parent_course' );
+        $query->set( 'meta_value', absint( $_GET['film_school_filter_course'] ) );
+    }
+
+    public static function disable_lesson_months_dropdown( bool $disable, string $post_type ): bool {
+        return 'lesson' === $post_type ? true : $disable;
     }
 
     public static function render_lesson_quick_edit( string $column_name, string $post_type ): void {
@@ -348,7 +393,9 @@ class Film_School_Admin_Columns {
     // --- Courses -------------------------------------------------------
 
     public static function course_columns( array $columns ): array {
-        return self::insert_after_title( $columns, [ 'film_school_public' => 'Public Course' ] );
+        $columns = self::insert_after_title( $columns, [ 'film_school_public' => 'Public Course' ] );
+        unset( $columns['date'] );
+        return $columns;
     }
 
     public static function render_course_column( string $column, int $post_id ): void {
