@@ -3,11 +3,12 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Admin list-table customizations for course/unit/lesson — removes the
- * Date column entirely on Courses, hides it by default on Lessons/Units
- * (still available via Screen Options), and adds relational columns
- * (Course/Unit/Public/Lesson Order) so staff don't have to open each
- * post to see how it fits into the hierarchy. Also swaps the Lessons
- * screen's built-in month/year filter for a more useful Course filter.
+ * Date column entirely on Courses and Units, hides it by default on
+ * Lessons (still available via Screen Options), and adds relational
+ * columns (Course/Unit/Public/Lesson Order/Unit Order) so staff don't
+ * have to open each post to see how it fits into the hierarchy. Also
+ * swaps the Lessons screen's built-in month/year filter for a more
+ * useful Course filter.
  */
 class Film_School_Admin_Columns {
 
@@ -42,7 +43,7 @@ class Film_School_Admin_Columns {
     }
 
     public static function hide_date_by_default( array $hidden, $screen ): array {
-        if ( in_array( $screen->id, [ 'edit-lesson', 'edit-unit' ], true ) ) {
+        if ( 'edit-lesson' === $screen->id ) {
             $hidden[] = 'date';
         }
         return $hidden;
@@ -95,7 +96,9 @@ class Film_School_Admin_Columns {
             printf( '<div class="hidden" id="film_school_lesson_unit_inline_%d">%s</div>', esc_attr( $post_id ), esc_html( $unit_id ) );
         }
         if ( 'film_school_lesson_order' === $column ) {
-            echo esc_html( get_field( 'lesson_order', $post_id ) ?: '—' );
+            $order = get_field( 'lesson_order', $post_id );
+            echo esc_html( $order ?: '—' );
+            printf( '<div class="hidden" id="film_school_lesson_order_inline_%d">%s</div>', esc_attr( $post_id ), esc_html( $order ) );
         }
     }
 
@@ -178,6 +181,21 @@ class Film_School_Admin_Columns {
             </fieldset>
             <?php
         }
+
+        if ( 'film_school_lesson_order' === $column_name ) {
+            ?>
+            <fieldset class="inline-edit-col-right">
+                <div class="inline-edit-col">
+                    <label>
+                        <span class="title">Lesson Order</span>
+                        <span class="input-text-wrap">
+                            <input type="number" name="film_school_lesson_order" class="film_school_lesson_order" value="">
+                        </span>
+                    </label>
+                </div>
+            </fieldset>
+            <?php
+        }
     }
 
     /**
@@ -250,11 +268,11 @@ class Film_School_Admin_Columns {
      * Two unrelated jobs share this one script tag (both only needed
      * on the lesson list screen, so one enqueue covers both):
      *
-     * 1. Quick Edit: prefills the Course/Unit dropdowns from the
-     *    hidden per-row values rendered above. Course and Unit aren't
-     *    cross-filtered (picking a Course doesn't narrow the Unit
-     *    list), matching the main lesson edit screen's own fields,
-     *    which don't filter either.
+     * 1. Quick Edit: prefills the Course/Unit dropdowns and Lesson
+     *    Order field from the hidden per-row values rendered above.
+     *    Course and Unit aren't cross-filtered (picking a Course
+     *    doesn't narrow the Unit list), matching the main lesson edit
+     *    screen's own fields, which don't filter either.
      *
      * 2. Bulk Edit: WordPress's native bulk-edit save only fires
      *    save_post for a post if one of WordPress's OWN recognized
@@ -280,8 +298,10 @@ class Film_School_Admin_Columns {
                 if ( id > 0 ) {
                     var courseId = $( '#film_school_lesson_course_inline_' + id ).text();
                     var unitId   = $( '#film_school_lesson_unit_inline_' + id ).text();
+                    var order    = $( '#film_school_lesson_order_inline_' + id ).text();
                     $( 'select[name="film_school_lesson_course"]', '.inline-edit-row' ).val( courseId );
                     $( 'select[name="film_school_lesson_unit"]', '.inline-edit-row' ).val( unitId );
+                    $( ':input[name="film_school_lesson_order"]', '.inline-edit-row' ).val( order );
                 }
             };
 
@@ -319,6 +339,9 @@ class Film_School_Admin_Columns {
         if ( isset( $_POST['film_school_lesson_unit'] ) ) {
             $unit_id = absint( $_POST['film_school_lesson_unit'] );
             update_field( 'parent_unit', $unit_id ?: '', $post_id );
+        }
+        if ( isset( $_POST['film_school_lesson_order'] ) ) {
+            update_field( 'lesson_order', absint( $_POST['film_school_lesson_order'] ), $post_id );
         }
     }
 
@@ -407,10 +430,12 @@ class Film_School_Admin_Columns {
     // --- Units -----------------------------------------------------------
 
     public static function unit_columns( array $columns ): array {
-        return self::insert_after_title( $columns, [
+        $columns = self::insert_after_title( $columns, [
             'film_school_course' => 'Parent Course',
             'film_school_order'  => 'Unit Order',
         ] );
+        unset( $columns['date'] );
+        return $columns;
     }
 
     public static function render_unit_column( string $column, int $post_id ): void {
