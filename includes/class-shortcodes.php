@@ -30,10 +30,11 @@ class Film_School_Shortcodes {
      * "Next Up" card linking to the next lesson in sequence — within
      * the current lesson's unit if it has one, rolling over to the
      * next unit's first lesson if it's the last one in its unit, or
-     * walking lesson_order directly for a flat course. Returns nothing
-     * if this is the last lesson in the course. Doesn't check lock
-     * status — it's a "what comes next" pointer, not a gate; clicking
-     * through to a locked lesson still redirects per the usual gate.
+     * walking lesson_order directly for a flat course. Shows an "End
+     * of Course" card instead if this is the last lesson in the
+     * course. Doesn't check lock status — it's a "what comes next"
+     * pointer, not a gate; clicking through to a locked lesson still
+     * redirects per the usual gate.
      */
     public static function next_lesson(): string {
         if ( ! is_singular( 'lesson' ) ) {
@@ -43,28 +44,60 @@ class Film_School_Shortcodes {
         $current_id = get_queried_object_id();
         $next_id    = self::find_next_lesson( $current_id );
 
-        if ( ! $next_id ) {
-            return '';
-        }
-
         ob_start();
         self::print_next_lesson_assets();
+
+        if ( $next_id ) {
+            ?>
+            <div class="fs-next-up">
+                <a class="fs-next-up-link" href="<?php echo esc_url( get_permalink( $next_id ) ); ?>">
+                    <span class="fs-next-up-text">
+                        <span class="fs-next-up-label">Next Up</span>
+                        <span class="fs-next-up-title"><?php echo esc_html( get_the_title( $next_id ) ); ?></span>
+                    </span>
+                    <span class="fs-next-up-arrow" aria-hidden="true">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                </a>
+            </div>
+            <?php
+        } else {
+            self::print_end_of_course_card();
+        }
+
+        return ob_get_clean();
+    }
+
+    /**
+     * Shown in place of the "Next Up" card on a course's final lesson,
+     * pointing the student at the course archive and their own profile
+     * page instead of leaving the card blank.
+     */
+    private static function print_end_of_course_card(): void {
+        $links = [];
+
+        $courses_url = get_post_type_archive_link( 'course' );
+        if ( $courses_url ) {
+            $links[] = '<a class="fs-next-up-inline-link" href="' . esc_url( $courses_url ) . '">View more courses</a>';
+        }
+
+        $profile_page_id = Film_School_Progress::get_student_profile_page_id();
+        $profile_url      = $profile_page_id ? get_permalink( $profile_page_id ) : '';
+        if ( $profile_url ) {
+            $links[] = '<a class="fs-next-up-inline-link" href="' . esc_url( $profile_url ) . '">check out your student profile</a>';
+        }
         ?>
-        <div class="fs-next-up">
-            <a class="fs-next-up-link" href="<?php echo esc_url( get_permalink( $next_id ) ); ?>">
-                <span class="fs-next-up-text">
-                    <span class="fs-next-up-label">Next Up</span>
-                    <span class="fs-next-up-title"><?php echo esc_html( get_the_title( $next_id ) ); ?></span>
+        <div class="fs-next-up fs-next-up-end">
+            <span class="fs-next-up-text">
+                <span class="fs-next-up-label">End of Course</span>
+                <span class="fs-next-up-title">
+                    <?php echo $links ? implode( ' or ', $links ) : "You've completed every lesson."; ?>
                 </span>
-                <span class="fs-next-up-arrow" aria-hidden="true">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </span>
-            </a>
+            </span>
         </div>
         <?php
-        return ob_get_clean();
     }
 
     private static function find_next_lesson( int $current_id ): ?int {
@@ -160,7 +193,8 @@ class Film_School_Shortcodes {
             .fs-next-up {
                 margin: 24px 0;
             }
-            .fs-next-up-link {
+            .fs-next-up-link,
+            .fs-next-up-end {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
@@ -170,6 +204,13 @@ class Film_School_Shortcodes {
                 border-radius: 8px;
                 text-decoration: none;
                 color: inherit;
+            }
+            .fs-next-up-inline-link {
+                color: #ffae00;
+                text-decoration: underline;
+            }
+            .fs-next-up-inline-link:hover {
+                text-decoration: none;
             }
             .fs-next-up-text {
                 display: flex;

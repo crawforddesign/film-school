@@ -31,18 +31,7 @@ class Film_School_Progress {
         }
 
         $post = get_post();
-        if ( ! $post ) {
-            return;
-        }
-
-        // Check both post_content and Elementor's own stored data —
-        // a shortcode placed via an Elementor Shortcode widget lives
-        // in _elementor_data, not necessarily verbatim in post_content.
-        $elementor_data = get_post_meta( $post->ID, '_elementor_data', true );
-        $has_shortcode  = has_shortcode( $post->post_content, 'student_progress_summary' )
-            || ( $elementor_data && false !== strpos( $elementor_data, 'student_progress_summary' ) );
-
-        if ( ! $has_shortcode ) {
+        if ( ! $post || ! self::page_has_progress_summary( $post->ID ) ) {
             return;
         }
 
@@ -51,6 +40,46 @@ class Film_School_Progress {
 
         wp_safe_redirect( $redirect_url ?: home_url( '/' ) );
         exit;
+    }
+
+    /**
+     * The page containing [student_progress_summary], if one exists —
+     * wherever a student would go to see their own progress. Detected
+     * via the shortcode rather than a hardcoded slug/setting, so it
+     * works regardless of what the page is actually named/slugged.
+     */
+    public static function get_student_profile_page_id(): ?int {
+        static $cached = null;
+        if ( null !== $cached ) {
+            return $cached ?: null;
+        }
+
+        $pages = get_posts( [
+            'post_type'   => 'page',
+            'post_status' => 'publish',
+            'numberposts' => -1,
+            'fields'      => 'ids',
+        ] );
+
+        foreach ( $pages as $page_id ) {
+            if ( self::page_has_progress_summary( $page_id ) ) {
+                $cached = $page_id;
+                return $page_id;
+            }
+        }
+
+        $cached = 0;
+        return null;
+    }
+
+    // Check both post_content and Elementor's own stored data — a
+    // shortcode placed via an Elementor Shortcode widget lives in
+    // _elementor_data, not necessarily verbatim in post_content.
+    private static function page_has_progress_summary( int $page_id ): bool {
+        $elementor_data = get_post_meta( $page_id, '_elementor_data', true );
+
+        return has_shortcode( get_post_field( 'post_content', $page_id ), 'student_progress_summary' )
+            || ( $elementor_data && false !== strpos( $elementor_data, 'student_progress_summary' ) );
     }
 
     public static function get_completed_lessons( int $user_id ): array {
