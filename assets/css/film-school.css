@@ -1,0 +1,77 @@
+.fs-course-progress {
+    margin-bottom: 24px;
+}
+.fs-progress-bar {
+    background: #eee;
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+    margin: 6px 0;
+}
+.fs-progress-bar > div {
+    background: #2271b1;
+    height: 100%;
+}
+.fs-btn {
+    display: inline-block;
+    background: #2271b1;
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 14px;
+}
+.fs-badge {
+    display: inline-block;
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 10px;
+    background: #edfaef;
+    color: #1a7a2e;
+}
+.fs-badge.fs-fail {
+    background: #fbeaea;
+    color: #a02222;
+}
+.fs-quiz-history {
+    width: 100%;
+    border-collapse: collapse;
+}
+.fs-quiz-history th,
+.fs-quiz-history td {
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+}
+.fs-todo-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.fs-todo-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+.fs-todo-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    background: #fff4e5;
+    color: #b8560a;
+    padding: 2px 8px;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+.fs-todo-course {
+    margin-left: auto;
+    font-size: 12px;
+    color: #888;
+}
+.fs-todo-empty {
+    color: #666;
+    font-style: italic;
+}

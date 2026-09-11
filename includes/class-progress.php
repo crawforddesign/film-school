@@ -1,0 +1,135 @@
+<?php
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Tracks per-user lesson completion and enforces prerequisite gating.
+ * Completion is stored as user meta — a single array of lesson IDs is
+ * enough for "has this student finished lesson X", which is all the
+ * gate check needs.
+ */
+class Film_School_Progress {
+
+    const META_KEY = '_completed_lessons';
+
+    public static function init(): void {
+        add_action( 'template_redirect', [ __CLASS__, 'enforce_lesson_gate' ] );
+        add_action( 'template_redirect', [ __CLASS__, 'guard_student_profile_page' ] );
+    }
+
+    /**
+     * Any page containing [student_progress_summary] is treated as the
+     * student profile page — anonymous visitors are sent to a custom
+     * page instead (set under Film School → the Settings box on the
+     * dashboard), so you control the messaging entirely rather than
+     * relying on a 404 template. Detected via the shortcode rather
+     * than a hardcoded slug, so it works regardless of what the page
+     * is actually named/slugged.
+     */
+    public static function guard_student_profile_page(): void {
+        if ( is_user_logged_in() || ! is_page() ) {
+            return;
+        }
+
+        $post = get_post();
+        if ( ! $post ) {
+            return;
+        }
+
+        // Check both post_content and Elementor's own stored data —
+        // a shortcode placed via an Elementor Shortcode widget lives
+        // in _elementor_data, not necessarily verbatim in post_content.
+        $elementor_data = get_post_meta( $post->ID, '_elementor_data', true );
+        $has_shortcode  = has_shortcode( $post->post_content, 'student_progress_summary' )
+            || ( $elementor_data && false !== strpos( $elementor_data, 'student_progress_summary' ) );
+
+        if ( ! $has_shortcode ) {
+            return;
+        }
+
+        $redirect_page_id = (int) get_option( 'film_school_login_required_page_id' );
+        $redirect_url      = $redirect_page_id ? get_permalink( $redirect_page_id ) : home_url( '/' );
+
+        wp_safe_redirect( $redirect_url ?: home_url( '/' ) );
+        exit;
+    }
+
+    public static function get_completed_lessons( int $user_id ): array {
+        return array_map( 'absint', (array) get_user_meta( $user_id, self::META_KEY, true ) );
+    }
+
+    public static function mark_lesson_complete( int $user_id, int $lesson_id ): void {
+        $completed   = self::get_completed_lessons( $user_id );
+        $completed[] = $lesson_id;
+        update_user_meta( $user_id, self::META_KEY, array_values( array_unique( $completed ) ) );
+    }
+
+    public static function is_lesson_locked( int $lesson_id, int $user_id ): bool {
+        // Instructors/admins bypass gating entirely.
+        if ( user_can( $user_id, 'unlock_all_lessons' ) ) {
+            return false;
+        }
+
+        $course_id = (int) get_field( 'parent_course', $lesson_id );
+
+        // Public courses have no login requirement, and therefore no
+        // per-user state to check prerequisites or group access against.
+        if ( $course_id && Film_School_Groups::is_public_course( $course_id ) ) {
+            return false;
+        }
+
+        if ( $course_id && ! Film_School_Groups::user_can_access_course( $user_id, $course_id ) ) {
+            return true;
+        }
+
+        $requires = (int) get_field( 'requires_lesson', $lesson_id );
+
+        if ( ! $requires ) {
+            return false;
+        }
+
+        return ! in_array( $requires, self::get_completed_lessons( $user_id ), true );
+    }
+
+    /**
+     * Runs on every single-lesson request. Public-course lessons skip
+     * every check below — no login requirement, no group restriction,
+     * no prerequisite chain, since none of that can be evaluated for
+     * an anonymous visitor. Everything else requires login, group
+     * access if restricted, and prerequisite completion.
+     */
+    public static function enforce_lesson_gate(): void {
+        if ( ! is_singular( 'lesson' ) ) {
+            return;
+        }
+
+        $lesson_id = get_queried_object_id();
+        $course_id = (int) get_field( 'parent_course', $lesson_id );
+
+        if ( $course_id && Film_School_Groups::is_public_course( $course_id ) ) {
+            return;
+        }
+
+        if ( ! is_user_logged_in() ) {
+            auth_redirect();
+            return;
+        }
+
+        $user_id = get_current_user_id();
+
+        if ( ! self::is_lesson_locked( $lesson_id, $user_id ) ) {
+            return;
+        }
+
+        // Locked because the course itself is restricted — send them
+        // to the course page rather than a prerequisite lesson that
+        // doesn't apply here.
+        if ( $course_id && ! Film_School_Groups::user_can_access_course( $user_id, $course_id ) ) {
+            wp_safe_redirect( get_permalink( $course_id ) ?: home_url( '/' ) );
+            exit;
+        }
+
+        $requires = (int) get_field( 'requires_lesson', $lesson_id );
+        wp_safe_redirect( $requires ? get_permalink( $requires ) : home_url( '/' ) );
+        exit;
+    }
+}
