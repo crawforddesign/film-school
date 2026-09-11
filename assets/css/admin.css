@@ -1,0 +1,555 @@
+/**
+ * Film School Admin — Shadcn-inspired design system
+ * Scoped under .fs-v2 to avoid conflicts with WP admin styles (and with
+ * any other CDG plugin's own admin design system running on the same site).
+ */
+
+/* ── Variables ── */
+.fs-v2 {
+  --fs-surface: #ffffff;
+  --fs-muted: #f4f4f5;
+  --fs-muted-fg: #71717a;
+  --fs-border: #e4e4e7;
+  --fs-fg: #09090b;
+  --fs-fg-2: #3f3f46;
+  --fs-primary: #18181b;
+  --fs-primary-fg: #fafafa;
+  --fs-ring: rgba(0, 0, 0, 0.06);
+  --fs-radius: 6px;
+  --fs-radius-lg: 10px;
+  --fs-sidebar-w: 200px;
+
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto,
+    ui-sans-serif, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fs-fg);
+}
+
+.fs-v2 * {
+  box-sizing: border-box;
+}
+.fs-v2 h1,
+.fs-v2 h2,
+.fs-v2 h3 {
+  font-weight: 600;
+  margin: 0;
+}
+.fs-v2 a {
+  text-decoration: none;
+}
+.fs-v2 input,
+.fs-v2 select,
+.fs-v2 textarea,
+.fs-v2 button {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+/* ── Page header ── */
+.fs-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 20px;
+  padding-top: 10px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--fs-border);
+}
+
+.fs-page-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fs-page-title h1 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--fs-fg);
+  line-height: 1;
+  padding: 0;
+}
+
+/* Named .fs-chip (not .fs-badge) — assets/css/film-school.css already
+   defines .fs-badge on the front end (a green/red pass-fail pill) with
+   completely different styling; a distinct name keeps the two from ever
+   colliding if both stylesheets are ever loaded on the same screen. */
+.fs-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--fs-muted);
+  color: var(--fs-muted-fg);
+  border: 1px solid var(--fs-border);
+  line-height: 1.5;
+}
+
+.fs-success-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #15803d;
+}
+
+.fs-success-notice svg {
+  width: 15px !important;
+  height: 15px !important;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ── Body layout ── */
+.fs-body-layout {
+  display: flex !important;
+  gap: 24px;
+  align-items: flex-start;
+  float: none !important; /* WP admin uses float layout; don't inherit it */
+}
+
+/* ── Sidebar ── */
+.fs-sidebar {
+  width: var(--fs-sidebar-w);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: 52px; /* WP admin bar (32px) + some breathing room */
+}
+
+.fs-sidebar-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fs-muted-fg);
+  padding: 0 10px 8px;
+}
+
+.fs-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--fs-radius);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--fs-fg-2) !important;
+  text-decoration: none !important;
+  transition: background 0.1s, color 0.1s;
+  line-height: 1;
+  box-shadow: none !important;
+}
+
+.fs-nav-item:hover {
+  background: var(--fs-muted);
+  color: var(--fs-fg) !important;
+}
+
+.fs-nav-item.fs-active {
+  background: var(--fs-muted);
+  color: var(--fs-fg) !important;
+  font-weight: 600;
+}
+
+.fs-nav-item svg {
+  width: 16px !important;
+  height: 16px !important;
+  opacity: 0.65;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.fs-nav-item.fs-active svg {
+  opacity: 1;
+}
+
+.fs-sidebar-divider {
+  height: 1px;
+  background: var(--fs-border);
+  margin: 8px 10px;
+}
+
+/* ── Content column ── */
+.fs-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fs-card-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+/* ── Cards ── */
+.fs-card {
+  background: var(--fs-surface);
+  border: 1px solid var(--fs-border);
+  border-radius: var(--fs-radius-lg);
+  overflow: hidden;
+}
+
+.fs-card-header {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--fs-border);
+}
+
+.fs-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  color: var(--fs-fg);
+  line-height: 1.3;
+}
+
+.fs-card-desc {
+  margin: 5px 0 0;
+  font-size: 13px;
+  color: var(--fs-muted-fg);
+  line-height: 1.45;
+  font-weight: 400;
+}
+
+.fs-card-desc code,
+.fs-setting-hint code {
+  font-size: 11.5px;
+  background: var(--fs-muted);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: "Courier New", Consolas, monospace;
+  color: var(--fs-fg-2);
+  border: 1px solid var(--fs-border);
+}
+
+.fs-card-body {
+  padding: 0;
+}
+
+.fs-card-body-pad {
+  padding: 16px 20px;
+}
+
+/* ── Setting rows (used by the Settings card) ── */
+.fs-setting-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 20px;
+  gap: 32px;
+  border-bottom: 1px solid var(--fs-border);
+}
+
+.fs-setting-row:last-child {
+  border-bottom: none;
+}
+
+.fs-setting-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.fs-setting-label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--fs-fg);
+  line-height: 1.3;
+}
+
+.fs-setting-hint {
+  font-size: 12.5px;
+  color: var(--fs-muted-fg);
+  margin-top: 3px;
+  line-height: 1.45;
+  font-weight: 400;
+}
+
+.fs-setting-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Select ── */
+.fs-select {
+  height: 34px;
+  border: 1px solid var(--fs-border);
+  border-radius: var(--fs-radius);
+  padding: 0 28px 0 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--fs-fg);
+  background-color: var(--fs-surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+  cursor: pointer;
+  min-width: 190px;
+  transition: border-color 0.1s;
+  box-shadow: none;
+}
+
+.fs-select:focus {
+  border-color: var(--fs-primary);
+  box-shadow: 0 0 0 2px var(--fs-ring);
+}
+
+/* ── Buttons ──
+   Named .fs-abtn (not .fs-btn) — assets/css/film-school.css already
+   defines .fs-btn on the front end with different, conflicting styling;
+   a distinct name keeps the two from ever colliding if both stylesheets
+   are ever loaded on the same screen. */
+.fs-abtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--fs-radius);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.1s, background 0.1s;
+  border: none;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.fs-abtn-primary {
+  background: var(--fs-primary);
+  color: var(--fs-primary-fg) !important;
+}
+
+.fs-abtn-primary:hover {
+  opacity: 0.85;
+  color: var(--fs-primary-fg) !important;
+}
+
+.fs-abtn-secondary {
+  background: var(--fs-surface);
+  color: var(--fs-fg);
+  border: 1px solid var(--fs-border) !important;
+}
+
+.fs-abtn-secondary:hover {
+  background: var(--fs-muted);
+  color: var(--fs-fg);
+}
+
+/* ── Guide-style prose (About card) ── */
+.fs-prose {
+  padding: 20px;
+  font-size: 13.5px;
+  color: var(--fs-fg-2);
+  line-height: 1.65;
+}
+
+.fs-prose p {
+  margin: 0 0 12px;
+}
+
+.fs-prose p:last-child {
+  margin-bottom: 0;
+}
+
+.fs-prose ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.fs-prose li {
+  margin-bottom: 6px;
+}
+
+.fs-prose li:last-child {
+  margin-bottom: 0;
+}
+
+.fs-prose strong {
+  color: var(--fs-fg);
+  font-weight: 600;
+}
+
+/* ── Stat card (Enrollment) ── */
+.fs-stat {
+  padding: 20px;
+}
+
+.fs-stat-num {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--fs-fg);
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+
+.fs-stat-label {
+  font-size: 12.5px;
+  color: var(--fs-muted-fg);
+  margin-top: 6px;
+}
+
+.fs-stat-link {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--fs-fg);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Overachievers list ── */
+.fs-rank-list {
+  padding: 8px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fs-rank-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 0;
+  font-size: 13px;
+  color: var(--fs-fg-2);
+  border-bottom: 1px solid var(--fs-muted);
+}
+
+.fs-rank-row:last-child {
+  border-bottom: none;
+}
+
+.fs-rank-pos {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fs-muted-fg);
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.fs-rank-name {
+  flex: 1;
+  color: var(--fs-fg);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fs-rank-count {
+  font-size: 12px;
+  color: var(--fs-muted-fg);
+  flex-shrink: 0;
+}
+
+/* ── Empty state ── */
+.fs-empty {
+  padding: 16px 20px;
+  font-size: 13px;
+  color: var(--fs-muted-fg);
+  font-style: italic;
+}
+
+/* ── Data table (Grade Book) ── */
+.fs-table-wrap {
+  overflow-x: auto;
+}
+
+.fs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.fs-table th,
+.fs-table td {
+  padding: 11px 20px;
+  text-align: left;
+  border-bottom: 1px solid var(--fs-border);
+  white-space: nowrap;
+}
+
+.fs-table thead th {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fs-muted-fg);
+  font-weight: 600;
+  background: var(--fs-muted);
+}
+
+.fs-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.fs-table tbody tr:hover {
+  background: #fafafa;
+}
+
+.fs-table a {
+  color: var(--fs-fg);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.fs-table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--fs-border);
+}
+
+.fs-status-done {
+  color: #15803d;
+  font-weight: 500;
+}
+
+.fs-status-pending {
+  color: var(--fs-muted-fg);
+}
+
+/* ── Responsive ── */
+@media (max-width: 782px) {
+  .fs-body-layout {
+    flex-direction: column;
+  }
+
+  .fs-sidebar {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    position: static;
+  }
+
+  .fs-sidebar-label {
+    display: none;
+  }
+
+  .fs-setting-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .fs-card-row {
+    grid-template-columns: 1fr;
+  }
+}

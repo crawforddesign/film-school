@@ -4,7 +4,7 @@
  * Plugin URI:        https://crawforddesigngroup.com/
  * Update URI:        https://github.com/crawforddesign/film-school
  * Description:       Lightweight course platform for Prize Foundation — courses, units, lessons, Gravity Forms quiz integration, and student progress tracking.
- * Version:           1.0.3
+ * Version:           1.1.0
  * Requires at least: 6.4
  * Requires PHP:      8.0
  * Author:            Crawford Design Group
@@ -22,7 +22,7 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/plugin-update-checker/plugi
 
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
-define( 'FILM_SCHOOL_VERSION', '1.0.3' );
+define( 'FILM_SCHOOL_VERSION', '1.1.0' );
 define( 'FILM_SCHOOL_PATH', plugin_dir_path( __FILE__ ) );
 define( 'FILM_SCHOOL_URL', plugin_dir_url( __FILE__ ) );
 
@@ -47,6 +47,7 @@ $film_school_update_checker = PucFactory::buildUpdateChecker(
 );
 $film_school_update_checker->getVcsApi()->enableReleaseAssets( '/\.zip($|[?&#])/i' );
 
+require_once FILM_SCHOOL_PATH . 'includes/class-admin-ui.php';
 require_once FILM_SCHOOL_PATH . 'includes/class-post-types.php';
 require_once FILM_SCHOOL_PATH . 'includes/class-dashboard.php';
 require_once FILM_SCHOOL_PATH . 'includes/class-acf-fields.php';
@@ -60,6 +61,7 @@ require_once FILM_SCHOOL_PATH . 'includes/class-admin-columns.php';
 require_once FILM_SCHOOL_PATH . 'includes/class-activation.php';
 
 add_action( 'plugins_loaded', function () {
+    Film_School_Admin_UI::init();
     Film_School_Post_Types::init();
     Film_School_ACF_Fields::init();
     Film_School_Groups::init();

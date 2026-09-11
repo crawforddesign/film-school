@@ -31,10 +31,13 @@ class Film_School_Gradebook {
     public static function render(): void {
         $courses = get_posts( [ 'post_type' => 'course', 'numberposts' => -1 ] );
 
-        echo '<div class="wrap"><h1>Grade Book</h1>';
+        Film_School_Admin_UI::page_start( 'Grade Book', 'gradebook' );
 
         if ( ! $courses ) {
-            echo '<p>No courses yet.</p></div>';
+            Film_School_Admin_UI::card( '', '', function () {
+                Film_School_Admin_UI::empty_state( 'No courses yet.' );
+            } );
+            Film_School_Admin_UI::page_end();
             return;
         }
 
@@ -43,29 +46,31 @@ class Film_School_Gradebook {
         $student_id = isset( $_GET['student_id'] ) ? absint( $_GET['student_id'] ) : 0;
         $groups     = get_posts( [ 'post_type' => 'group', 'numberposts' => -1 ] );
 
-        self::render_course_selector( $courses, $course_id, $groups, $group_id );
+        Film_School_Admin_UI::card( '', '', function () use ( $courses, $course_id, $groups, $group_id, $student_id ) {
+            self::render_course_selector( $courses, $course_id, $groups, $group_id );
 
-        if ( $student_id ) {
-            self::render_student_detail( $course_id, $student_id );
-        } else {
-            self::render_roster( $course_id, $group_id );
-        }
+            if ( $student_id ) {
+                self::render_student_detail( $course_id, $student_id );
+            } else {
+                self::render_roster( $course_id, $group_id );
+            }
+        } );
 
-        echo '</div>';
+        Film_School_Admin_UI::page_end();
     }
 
     private static function render_course_selector( array $courses, int $selected_course, array $groups, int $selected_group ): void {
         ?>
-        <form method="get" style="margin:16px 0; display:flex; gap:12px; align-items:center;">
+        <form method="get" class="fs-table-toolbar">
             <input type="hidden" name="page" value="film-school-gradebook">
-            <select name="course_id" onchange="this.form.submit()">
+            <select name="course_id" class="fs-select" onchange="this.form.submit()">
                 <?php foreach ( $courses as $course ) : ?>
                     <option value="<?php echo esc_attr( $course->ID ); ?>" <?php selected( $selected_course, $course->ID ); ?>>
                         <?php echo esc_html( $course->post_title ); ?>
                     </option>
                 <?php endforeach; ?>
             </select>
-            <select name="group_id" onchange="this.form.submit()">
+            <select name="group_id" class="fs-select" onchange="this.form.submit()">
                 <option value="0">All Students</option>
                 <?php foreach ( $groups as $group ) : ?>
                     <option value="<?php echo esc_attr( $group->ID ); ?>" <?php selected( $selected_group, $group->ID ); ?>>
@@ -103,61 +108,62 @@ class Film_School_Gradebook {
             $students   = array_filter( $students, fn( $student ) => in_array( $student->ID, $member_ids, true ) );
         }
         ?>
-        <table class="widefat striped">
-            <thead>
-                <tr>
-                    <th>Student</th>
-                    <th>Lessons Completed</th>
-                    <th>%</th>
-                    <th>Quizzes Passed</th>
-                    <th>Quizzes Failed</th>
-                    <th>Last Activity</th>
-                </tr>
-
-            </thead>
-            <tbody>
-                <?php if ( ! $students ) : ?>
-                    <tr><td colspan="6"><?php echo $group_id ? 'No students in this group.' : 'No students yet.'; ?></td></tr>
-                <?php endif; ?>
-                <?php foreach ( $students as $student ) :
-                    $completed = Film_School_Progress::get_completed_lessons( $student->ID );
-                    $done      = count( array_intersect( $lesson_ids, $completed ) );
-                    $pct       = $total ? (int) round( $done / $total * 100 ) : 0;
-
-                    $passed = (int) $wpdb->get_var( $wpdb->prepare(
-                        "SELECT COUNT(DISTINCT lesson_id) FROM {$table} WHERE user_id = %d AND passed = 1 AND lesson_id IN ({$id_list})",
-                        $student->ID
-                    ) );
-                    $failed = (int) $wpdb->get_var( $wpdb->prepare(
-                        "SELECT COUNT(*) FROM {$table} WHERE user_id = %d AND passed = 0 AND lesson_id IN ({$id_list})",
-                        $student->ID
-                    ) );
-                    $last = $wpdb->get_var( $wpdb->prepare(
-                        "SELECT MAX(created_at) FROM {$table} WHERE user_id = %d", $student->ID
-                    ) );
-                    ?>
+        <div class="fs-table-wrap">
+            <table class="fs-table">
+                <thead>
                     <tr>
-                        <td>
-                            <a href="<?php echo esc_url( add_query_arg( [ 'student_id' => $student->ID ] ) ); ?>">
-                                <?php echo esc_html( $student->display_name ); ?>
-                            </a>
-                        </td>
-                        <td><?php echo esc_html( "{$done} of {$total}" ); ?></td>
-                        <td><?php echo esc_html( $pct ); ?>%</td>
-                        <td><?php echo esc_html( $passed ); ?></td>
-                        <td><?php echo esc_html( $failed ); ?></td>
-                        <td><?php echo $last ? esc_html( human_time_diff( strtotime( $last ) ) . ' ago' ) : '—'; ?></td>
+                        <th>Student</th>
+                        <th>Lessons Completed</th>
+                        <th>%</th>
+                        <th>Quizzes Passed</th>
+                        <th>Quizzes Failed</th>
+                        <th>Last Activity</th>
                     </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    <?php if ( ! $students ) : ?>
+                        <tr><td colspan="6" class="fs-empty"><?php echo $group_id ? 'No students in this group.' : 'No students yet.'; ?></td></tr>
+                    <?php endif; ?>
+                    <?php foreach ( $students as $student ) :
+                        $completed = Film_School_Progress::get_completed_lessons( $student->ID );
+                        $done      = count( array_intersect( $lesson_ids, $completed ) );
+                        $pct       = $total ? (int) round( $done / $total * 100 ) : 0;
+
+                        $passed = (int) $wpdb->get_var( $wpdb->prepare(
+                            "SELECT COUNT(DISTINCT lesson_id) FROM {$table} WHERE user_id = %d AND passed = 1 AND lesson_id IN ({$id_list})",
+                            $student->ID
+                        ) );
+                        $failed = (int) $wpdb->get_var( $wpdb->prepare(
+                            "SELECT COUNT(*) FROM {$table} WHERE user_id = %d AND passed = 0 AND lesson_id IN ({$id_list})",
+                            $student->ID
+                        ) );
+                        $last = $wpdb->get_var( $wpdb->prepare(
+                            "SELECT MAX(created_at) FROM {$table} WHERE user_id = %d", $student->ID
+                        ) );
+                        ?>
+                        <tr>
+                            <td>
+                                <a href="<?php echo esc_url( add_query_arg( [ 'student_id' => $student->ID ] ) ); ?>">
+                                    <?php echo esc_html( $student->display_name ); ?>
+                                </a>
+                            </td>
+                            <td><?php echo esc_html( "{$done} of {$total}" ); ?></td>
+                            <td><?php echo esc_html( $pct ); ?>%</td>
+                            <td><?php echo esc_html( $passed ); ?></td>
+                            <td><?php echo esc_html( $failed ); ?></td>
+                            <td><?php echo $last ? esc_html( human_time_diff( strtotime( $last ) ) . ' ago' ) : '—'; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
         <?php
     }
 
     private static function render_student_detail( int $course_id, int $student_id ): void {
         $student = get_userdata( $student_id );
         if ( ! $student ) {
-            echo '<p>Student not found.</p>';
+            Film_School_Admin_UI::empty_state( 'Student not found.' );
             return;
         }
 
@@ -166,37 +172,46 @@ class Film_School_Gradebook {
 
         global $wpdb;
         $table = $wpdb->prefix . 'film_school_quiz_attempts';
-
-        echo '<h2>' . esc_html( $student->display_name ) . '</h2>';
-        echo '<p><a href="' . esc_url( remove_query_arg( 'student_id' ) ) . '">&larr; Back to roster</a></p>';
         ?>
-        <table class="widefat striped">
-            <thead><tr><th>Lesson</th><th>Status</th><th>Quiz</th></tr></thead>
-            <tbody>
-            <?php foreach ( $lessons as $lesson ) :
-                $done      = in_array( $lesson->ID, $completed, true );
-                $quiz_form = get_field( 'quiz_form', $lesson->ID );
-                $attempt   = $quiz_form ? $wpdb->get_row( $wpdb->prepare(
-                    "SELECT * FROM {$table} WHERE user_id = %d AND lesson_id = %d ORDER BY created_at DESC LIMIT 1",
-                    $student_id, $lesson->ID
-                ) ) : null;
-                ?>
-                <tr>
-                    <td><?php echo esc_html( $lesson->post_title ); ?></td>
-                    <td><?php echo $done ? '&#10003; Complete' : '&mdash; Incomplete'; ?></td>
-                    <td>
-                        <?php if ( $attempt ) : ?>
-                            <?php echo esc_html( round( $attempt->percent ) ); ?>% — <?php echo $attempt->passed ? 'Pass' : 'Fail'; ?>
-                        <?php elseif ( $quiz_form ) : ?>
-                            Not attempted
-                        <?php else : ?>
-                            &mdash;
-                        <?php endif; ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
+        <div class="fs-table-toolbar" style="justify-content:space-between;">
+            <strong><?php echo esc_html( $student->display_name ); ?></strong>
+            <a class="fs-abtn fs-abtn-secondary" href="<?php echo esc_url( remove_query_arg( 'student_id' ) ); ?>">&larr; Back to roster</a>
+        </div>
+        <div class="fs-table-wrap">
+            <table class="fs-table">
+                <thead><tr><th>Lesson</th><th>Status</th><th>Quiz</th></tr></thead>
+                <tbody>
+                <?php foreach ( $lessons as $lesson ) :
+                    $done      = in_array( $lesson->ID, $completed, true );
+                    $quiz_form = get_field( 'quiz_form', $lesson->ID );
+                    $attempt   = $quiz_form ? $wpdb->get_row( $wpdb->prepare(
+                        "SELECT * FROM {$table} WHERE user_id = %d AND lesson_id = %d ORDER BY created_at DESC LIMIT 1",
+                        $student_id, $lesson->ID
+                    ) ) : null;
+                    ?>
+                    <tr>
+                        <td><?php echo esc_html( $lesson->post_title ); ?></td>
+                        <td>
+                            <?php if ( $done ) : ?>
+                                <span class="fs-status-done">&#10003; Complete</span>
+                            <?php else : ?>
+                                <span class="fs-status-pending">&mdash; Incomplete</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if ( $attempt ) : ?>
+                                <?php echo esc_html( round( $attempt->percent ) ); ?>% — <?php echo $attempt->passed ? 'Pass' : 'Fail'; ?>
+                            <?php elseif ( $quiz_form ) : ?>
+                                Not attempted
+                            <?php else : ?>
+                                &mdash;
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
         <?php
     }
 }

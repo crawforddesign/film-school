@@ -65,7 +65,7 @@ class Film_School_Post_Types {
             25
         );
 
-        add_action( "load-{$hook}", [ 'Film_School_Dashboard', 'register_meta_boxes' ] );
+        add_action( "load-{$hook}", [ 'Film_School_Dashboard', 'handle_load' ] );
 
         // Reuses the native Users screen rather than building a
         // parallel student list — filtered to the student role.
