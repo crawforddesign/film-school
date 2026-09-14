@@ -14,6 +14,48 @@ class Film_School_Progress {
     public static function init(): void {
         add_action( 'template_redirect', [ __CLASS__, 'enforce_lesson_gate' ] );
         add_action( 'template_redirect', [ __CLASS__, 'guard_student_profile_page' ] );
+        add_filter( 'post_class', [ __CLASS__, 'add_lock_post_class' ], 10, 3 );
+    }
+
+    /**
+     * Resolves lock state for whoever is viewing right now, including
+     * logged-out visitors — is_lesson_locked() needs a real user ID to
+     * check group access and prerequisites against, so an anonymous
+     * visitor is locked out of everything except public-course lessons.
+     * This is the check to use anywhere a lesson is being *listed*
+     * (archives, loop grids, sidebars) rather than gated.
+     */
+    public static function is_locked_for_current_user( int $lesson_id ): bool {
+        $course_id = (int) get_field( 'parent_course', $lesson_id );
+
+        if ( $course_id && Film_School_Groups::is_public_course( $course_id ) ) {
+            return false;
+        }
+
+        if ( ! is_user_logged_in() ) {
+            return true;
+        }
+
+        return self::is_lesson_locked( $lesson_id, get_current_user_id() );
+    }
+
+    /**
+     * Stamps every lesson in a loop with fs-lesson-locked or
+     * fs-lesson-unlocked. Elementor Loop Grid items call post_class(),
+     * which gives archive templates a per-item hook for styling locked
+     * lessons — Elementor's own display conditions can't evaluate a
+     * per-post, per-user check like this one.
+     */
+    public static function add_lock_post_class( array $classes, array $css_class, int $post_id ): array {
+        if ( 'lesson' !== get_post_type( $post_id ) ) {
+            return $classes;
+        }
+
+        $classes[] = self::is_locked_for_current_user( $post_id )
+            ? 'fs-lesson-locked'
+            : 'fs-lesson-unlocked';
+
+        return $classes;
     }
 
     /**
