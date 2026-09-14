@@ -14,9 +14,26 @@ class Film_School_Post_Types {
 
     public static function init(): void {
         add_action( 'init', [ __CLASS__, 'register' ] );
+        add_action( 'init', [ __CLASS__, 'maybe_flush_rewrites' ], 20 );
         add_action( 'admin_menu', [ __CLASS__, 'register_menu' ], 5 );
         add_action( 'edit_form_after_title', [ __CLASS__, 'render_hierarchy_hint' ] );
         add_filter( 'use_block_editor_for_post_type', [ __CLASS__, 'disable_block_editor' ], 10, 2 );
+    }
+
+    /**
+     * Archive slugs (and the rewrite rules behind them) only exist once
+     * rewrite rules have been regenerated. register_activation_hook()
+     * doesn't fire on a plain plugin update, so key a one-time flush on
+     * the plugin version — bumping FILM_SCHOOL_VERSION re-flushes once,
+     * on the first load after the update, instead of needing a manual
+     * deactivate/reactivate or a Settings > Permalinks save.
+     */
+    public static function maybe_flush_rewrites(): void {
+        if ( get_option( 'film_school_rewrite_version' ) === FILM_SCHOOL_VERSION ) {
+            return;
+        }
+        flush_rewrite_rules();
+        update_option( 'film_school_rewrite_version', FILM_SCHOOL_VERSION );
     }
 
     /**
@@ -93,7 +110,7 @@ class Film_School_Post_Types {
         register_post_type( 'unit', [
             'labels'       => self::labels( 'Unit', 'Units' ),
             'public'       => true,
-            'has_archive'  => false,
+            'has_archive'  => 'units',
             'show_in_rest' => true,
             'show_in_menu' => 'film-school',
             'supports'     => [ 'title', 'editor' ],
@@ -103,7 +120,7 @@ class Film_School_Post_Types {
         register_post_type( 'lesson', [
             'labels'       => self::labels( 'Lesson', 'Lessons' ),
             'public'       => true,
-            'has_archive'  => false,
+            'has_archive'  => 'lessons',
             'show_in_rest' => true,
             'show_in_menu' => 'film-school',
             'supports'     => [ 'title', 'editor', 'thumbnail' ],
