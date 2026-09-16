@@ -153,6 +153,16 @@ A fifth, **Parent Course** (same group), outputs the title of the Course a Lesso
 
 ACF's own dynamic tag can't do this job: `parent_course` is a `post_object` field declared `'return_format' => 'id'`, so ACF hands Elementor the raw post ID and the card renders a number. Do **not** switch the field to return an object to work around it — ten call sites across this plugin do `(int) get_field( 'parent_course', ... )`, and casting a `WP_Post` to int yields `1`, silently repointing every one of them at whatever post has ID 1.
 
+### Ordering a Loop Grid
+
+**Lesson Order** and **Unit Order** appear in Elementor's **Order By** dropdown on the Loop Grid, Loop Carousel, Posts and Archive Posts widgets. Both are ACF number fields, and Elementor's Order By only offers post columns, so `includes/class-elementor-query.php` adds them.
+
+Courses need nothing: they sort on WordPress's own `menu_order` (set per course in Page Attributes → Order), which Elementor already offers as **Menu Order**.
+
+The option is matched to Elementor's control by *shape* — a `select` whose name ends in `orderby` and which already offers `date` and `title` — rather than by a hardcoded control name, because those names are not a public API. The sort itself runs in `pre_get_posts`, which is core and stable: Elementor passes the chosen value straight through to `WP_Query`, so a query asking for `orderby => lesson_order` sorts correctly no matter what Elementor changes. If a future Elementor release ever breaks the dropdown injection, the sort is still reachable by setting a Query ID on the widget and calling `$query->set( 'orderby', 'lesson_order' )`. Add widgets to the list with the `film_school_orderby_widgets` filter.
+
+**Caveat:** sorting by a meta field only returns posts that *have* that field. A lesson saved before `lesson_order` existed has no such row and will drop out of a Loop Grid sorted by it. ACF writes the default (`1`) on save, so re-saving the stragglers — or a bulk edit — fixes them.
+
 ## Styling
 
 All front-end styles live in `assets/css/film-school.css`, enqueued as a normal stylesheet. The sidebars and the Next Up card used to print `<style>` blocks inline from PHP, which meant three different palettes and no way to restyle any of it without editing plugin code.
