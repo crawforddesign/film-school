@@ -104,3 +104,64 @@
     pointer-events: none;
     cursor: default;
 }
+
+/* ── Mark Complete ([lesson_complete]) ──
+   Lives here rather than in a printed <style> block so the client can
+   restyle it in the theme without touching PHP. */
+.fs-complete {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 16px 0;
+}
+.fs-complete-form {
+    margin: 0;
+}
+.fs-complete-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #12b76a;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.fs-complete-btn:hover {
+    background: #0e9a58;
+}
+.fs-complete-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #1a7a2e;
+    font-weight: 600;
+    font-size: 15px;
+}
+.fs-complete-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #12b76a;
+    color: #fff;
+    font-size: 13px;
+}
+.fs-complete-undo {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #777;
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.fs-complete-undo:hover {
+    color: #333;
+}

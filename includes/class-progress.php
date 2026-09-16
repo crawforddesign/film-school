@@ -9,9 +9,11 @@ defined( 'ABSPATH' ) || exit;
  */
 class Film_School_Progress {
 
-    const META_KEY = '_completed_lessons';
+    const META_KEY     = '_completed_lessons';
+    const NONCE_ACTION = 'film_school_complete_lesson';
 
     public static function init(): void {
+        add_action( 'template_redirect', [ __CLASS__, 'handle_completion_post' ], 5 );
         add_action( 'template_redirect', [ __CLASS__, 'enforce_lesson_gate' ] );
         add_action( 'template_redirect', [ __CLASS__, 'guard_student_profile_page' ] );
         add_filter( 'post_class', [ __CLASS__, 'add_lock_post_class' ], 10, 3 );
@@ -132,6 +134,85 @@ class Film_School_Progress {
         $completed   = self::get_completed_lessons( $user_id );
         $completed[] = $lesson_id;
         update_user_meta( $user_id, self::META_KEY, array_values( array_unique( $completed ) ) );
+    }
+
+    public static function mark_lesson_incomplete( int $user_id, int $lesson_id ): void {
+        $completed = array_diff( self::get_completed_lessons( $user_id ), [ $lesson_id ] );
+        update_user_meta( $user_id, self::META_KEY, array_values( $completed ) );
+    }
+
+    public static function is_lesson_complete( int $user_id, int $lesson_id ): bool {
+        return in_array( $lesson_id, self::get_completed_lessons( $user_id ), true );
+    }
+
+    /**
+     * Whether a lesson can be completed by hand at all. A quiz-linked
+     * lesson can't — passing the quiz is its completion event, and a
+     * button beside it would let a student skip the assessment. A
+     * public-course lesson can't either: no login, so no one to record
+     * it against.
+     */
+    public static function lesson_is_manually_completable( int $lesson_id ): bool {
+        if ( 'lesson' !== get_post_type( $lesson_id ) ) {
+            return false;
+        }
+
+        if ( get_field( 'quiz_form', $lesson_id ) ) {
+            return false;
+        }
+
+        $course_id = (int) get_field( 'parent_course', $lesson_id );
+
+        return ! ( $course_id && Film_School_Groups::is_public_course( $course_id ) );
+    }
+
+    /**
+     * Handles the [lesson_complete] button's POST. Runs at priority 5
+     * so it lands before enforce_lesson_gate() — the gate would only
+     * ever bounce a request the checks here reject anyway, and doing
+     * the write first keeps the redirect target honest.
+     *
+     * Post/Redirect/Get: the redirect back to the lesson means a
+     * browser refresh doesn't re-submit, and the button re-renders
+     * from real state rather than from a flag in the request.
+     */
+    public static function handle_completion_post(): void {
+        if ( empty( $_POST[ self::NONCE_ACTION ] ) || ! is_user_logged_in() ) {
+            return;
+        }
+
+        $lesson_id = absint( $_POST['lesson_id'] ?? 0 );
+
+        // wp_verify_nonce(), not check_admin_referer() — this is a
+        // front-end form, and check_admin_referer() dies with wp-admin's
+        // "link you followed has expired" screen on a stale nonce. A
+        // student who left a lesson open overnight should get the page
+        // back with the button still on it, not an error page.
+        $nonce = isset( $_POST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ) : '';
+
+        if ( ! $lesson_id || ! wp_verify_nonce( $nonce, self::NONCE_ACTION . '_' . $lesson_id ) ) {
+            return;
+        }
+
+        $user_id = get_current_user_id();
+
+        // Re-check everything the button's rendering checked. The
+        // rendered button is a hint about what's allowed, never the
+        // authority on it — this POST can arrive without it.
+        if ( ! self::lesson_is_manually_completable( $lesson_id ) || self::is_lesson_locked( $lesson_id, $user_id ) ) {
+            return;
+        }
+
+        $action = isset( $_POST['fs_action'] ) ? sanitize_key( wp_unslash( $_POST['fs_action'] ) ) : '';
+
+        if ( 'undo' === $action ) {
+            self::mark_lesson_incomplete( $user_id, $lesson_id );
+        } else {
+            self::mark_lesson_complete( $user_id, $lesson_id );
+        }
+
+        wp_safe_redirect( get_permalink( $lesson_id ) ?: home_url( '/' ) );
+        exit;
     }
 
     public static function is_lesson_locked( int $lesson_id, int $user_id ): bool {

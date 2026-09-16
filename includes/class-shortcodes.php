@@ -5,6 +5,7 @@ class Film_School_Shortcodes {
 
     public static function init(): void {
         add_shortcode( 'lesson_quiz', [ __CLASS__, 'lesson_quiz' ] );
+        add_shortcode( 'lesson_complete', [ __CLASS__, 'lesson_complete' ] );
         add_shortcode( 'course_sidebar', [ __CLASS__, 'course_sidebar' ] );
         add_shortcode( 'course_page_sidebar', [ __CLASS__, 'course_page_sidebar' ] );
         add_shortcode( 'film_school_sidebar', [ __CLASS__, 'film_school_sidebar' ] );
@@ -26,6 +27,85 @@ class Film_School_Shortcodes {
         $form_id = get_field( 'quiz_form' );
 
         return $form_id ? do_shortcode( '[gravityform id="' . absint( $form_id ) . '" ajax="true"]' ) : '';
+    }
+
+    /**
+     * "Mark Complete" button for the lesson template — the completion
+     * event for a lesson with no quiz.
+     *
+     * Before this existed, Film_School_Progress::mark_lesson_complete()
+     * had exactly one caller: a passing quiz submission. That made
+     * quizzes mandatory in practice even though the content model
+     * treats them as optional — a quiz-less lesson could never be
+     * completed, so anything gated behind it stayed locked forever and
+     * no course containing one could reach 100%.
+     *
+     * Renders nothing on a lesson that has a quiz (passing it is the
+     * completion event there, and a button beside it would let a
+     * student skip the assessment) or on a public course (no login, so
+     * no one to record it against). Once complete it becomes a
+     * "Completed" badge with an Undo — a student who clicks by mistake
+     * shouldn't need an admin to fix it.
+     *
+     * Attributes: label, done_label, undo (yes/no) — e.g.
+     * [lesson_complete label="I've watched this" undo="no"]
+     */
+    public static function lesson_complete( $atts = [] ): string {
+        if ( ! is_singular( 'lesson' ) || ! is_user_logged_in() ) {
+            return '';
+        }
+
+        $atts = shortcode_atts( [
+            'label'      => 'Mark Complete',
+            'done_label' => 'Completed',
+            'undo'       => 'yes',
+        ], $atts, 'lesson_complete' );
+
+        $lesson_id = get_queried_object_id();
+        $user_id   = get_current_user_id();
+
+        if ( ! Film_School_Progress::lesson_is_manually_completable( $lesson_id ) ) {
+            return '';
+        }
+
+        // A locked lesson is unreachable anyway (the gate redirects
+        // before this renders), but an instructor with
+        // unlock_all_lessons can be standing on one — no button there.
+        if ( Film_School_Progress::is_lesson_locked( $lesson_id, $user_id ) ) {
+            return '';
+        }
+
+        $is_done = Film_School_Progress::is_lesson_complete( $user_id, $lesson_id );
+        $nonce   = Film_School_Progress::NONCE_ACTION;
+
+        ob_start();
+        ?>
+        <div class="fs-complete <?php echo $is_done ? 'fs-complete--done' : ''; ?>">
+            <?php if ( $is_done ) : ?>
+                <span class="fs-complete-badge">
+                    <span class="fs-complete-check" aria-hidden="true">&#10003;</span>
+                    <?php echo esc_html( $atts['done_label'] ); ?>
+                </span>
+                <?php if ( 'yes' === $atts['undo'] ) : ?>
+                    <form class="fs-complete-form" method="post" action="<?php echo esc_url( get_permalink( $lesson_id ) ); ?>">
+                        <?php wp_nonce_field( $nonce . '_' . $lesson_id ); ?>
+                        <input type="hidden" name="lesson_id" value="<?php echo esc_attr( $lesson_id ); ?>">
+                        <input type="hidden" name="fs_action" value="undo">
+                        <button type="submit" class="fs-complete-undo" name="<?php echo esc_attr( $nonce ); ?>" value="1">Undo</button>
+                    </form>
+                <?php endif; ?>
+            <?php else : ?>
+                <form class="fs-complete-form" method="post" action="<?php echo esc_url( get_permalink( $lesson_id ) ); ?>">
+                    <?php wp_nonce_field( $nonce . '_' . $lesson_id ); ?>
+                    <input type="hidden" name="lesson_id" value="<?php echo esc_attr( $lesson_id ); ?>">
+                    <button type="submit" class="fs-complete-btn" name="<?php echo esc_attr( $nonce ); ?>" value="1">
+                        <?php echo esc_html( $atts['label'] ); ?>
+                    </button>
+                </form>
+            <?php endif; ?>
+        </div>
+        <?php
+        return ob_get_clean();
     }
 
     /**

@@ -19,7 +19,7 @@ An admin notice appears on any wp-admin screen if either dependency isn't active
 5. **Add students** — Users → Add New, with role set to **Student**. Film School → Students is a shortcut to the Users list pre-filtered to that role.
 6. **Restrict a course (optional)** — create a **Group** (Film School → Groups), add student members, then set that course's **Restricted To Groups** field. Leave it empty to keep a course open to everyone.
 7. **Build the front end in Elementor**:
-   - Lesson template (Theme Builder → Single, Post Type: Lesson) — drop in `[lesson_quiz]` and `[course_sidebar]`.
+   - Lesson template (Theme Builder → Single, Post Type: Lesson) — drop in `[lesson_quiz]`, `[lesson_complete]`, and `[course_sidebar]`.
    - Course archive (Theme Builder → Archive, Post Type: Course) — a Loop Grid widget on "Current Query" already reflects each student's access, no shortcode needed.
    - A student profile page (a normal Page, e.g. `/my-progress/`) — `[student_progress_summary]`, `[student_quiz_history]`, and `[student_assignments]`.
 
@@ -39,7 +39,28 @@ Gating requires a logged-in user; anonymous visitors are redirected to log in.
 
 ## Quizzes
 
-Quizzes are built entirely in **Forms** (Gravity Forms) using the Quiz Add-On, graded Pass/Fail. Link a quiz to a lesson via the lesson's **Quiz** field. On submission, the result is recorded in `wp_film_school_quiz_attempts` and — if passed — marks the lesson complete, which unlocks anything gated behind it. Letter-graded quizzes aren't read (no `gquiz_is_pass` value) — keep quiz forms set to Pass/Fail grading.
+Quizzes are built entirely in **Forms** (Gravity Forms) using the Quiz Add-On, graded Pass/Fail. Link a quiz to a lesson via the lesson's **Quiz** field. On submission, the result is recorded in `wp_film_school_quiz_attempts` and — if passed — marks the lesson complete, which unlocks anything gated behind it. Quizzes are genuinely optional: a lesson without one is completed via `[lesson_complete]` instead (see **Lesson completion**). Letter-graded quizzes aren't read (no `gquiz_is_pass` value) — keep quiz forms set to Pass/Fail grading.
+
+## Lesson completion
+
+A lesson is marked complete for a student in one of two ways, and which one applies depends on whether the lesson has a quiz:
+
+- **Quiz lesson** — passing the linked quiz completes it, automatically. No button; a "Mark Complete" button next to a quiz would let a student skip the assessment.
+- **No quiz** — the student clicks **Mark Complete**, from the `[lesson_complete]` shortcode on the lesson template.
+
+Drop `[lesson_complete]` on the lesson template once and it takes care of itself — it renders nothing on lessons that have a quiz, so there's no need for a display condition. It also renders nothing on a public course, where there's no logged-in user to record anything against.
+
+Completion is what drives prerequisite unlocking, the sidebar checkmarks, the progress bars in `[student_progress_summary]`, and the Grade Book — so **a course whose lessons have no quizzes needs this shortcode on the lesson template.** Without it those lessons can never be completed, which means anything gated behind one stays locked and the course can never reach 100%.
+
+The button accepts `label`, `done_label`, and `undo` attributes:
+
+```
+[lesson_complete label="I've watched this" done_label="Watched" undo="no"]
+```
+
+Undo is on by default — a student who clicks by mistake can clear it themselves rather than emailing an admin. Set `undo="no"` if completion should be one-way.
+
+The POST is nonce-protected and re-validates every condition server-side (completable, not locked, correct user) rather than trusting the rendered button, then redirects back to the lesson so a refresh doesn't re-submit.
 
 ## Assignments
 
@@ -62,6 +83,7 @@ Courses, Units, and Lessons all have their **Date** column hidden by default (st
 | Shortcode | Where to use it | What it does |
 |---|---|---|
 | `[lesson_quiz]` | Lesson template only | Renders the quiz linked to the current lesson, if any |
+| `[lesson_complete]` | Lesson template only | "Mark Complete" button for a lesson with no quiz — the completion event for that lesson. Becomes a "Completed" badge with an Undo once clicked. Renders nothing on a quiz-linked lesson or a public course |
 | `[course_sidebar]` | Lesson template only | Collapsible unit/lesson navigator. On a private course: progress checkmarks, current-lesson highlight, locked-lesson indicators. On a public course: plain links only, no login required |
 | `[course_page_sidebar]` | Course template only | Same navigator, rooted at the course itself: the course title as the parent row with its units/lessons nested underneath. Every unit starts open (there's no current lesson to single one out) |
 | `[film_school_sidebar]` | Any page (Film School landing page) | Whole-library navigator: every course the visitor can access, each collapsible, with its units and lessons nested inside. Works logged out (public courses only) |
