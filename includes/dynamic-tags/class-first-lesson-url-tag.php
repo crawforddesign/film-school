@@ -2,11 +2,15 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Outputs the URL of the current Course's first lesson — for a "Start
- * Course" button on a Loop Item, or anywhere else a Course is the
- * current post. Unit-aware: uses the first unit's first lesson if the
- * course has units, otherwise the first lesson directly under the
- * course.
+ * Outputs the URL of a Course's first lesson — for a "Start Course"
+ * button on a Loop Item. Unit-aware: uses the first unit's first
+ * lesson if the course has units, otherwise the first lesson directly
+ * under the course.
+ *
+ * Resolves the course from whatever the current post is, so the same
+ * tag also works on a Lesson (or Unit) Loop Item — on the /lessons/
+ * archive it gives each card a "Start at the beginning" link back to
+ * the top of the course that lesson belongs to.
  */
 class Film_School_First_Lesson_Url_Tag extends \Elementor\Core\DynamicTags\Tag {
 
@@ -27,9 +31,16 @@ class Film_School_First_Lesson_Url_Tag extends \Elementor\Core\DynamicTags\Tag {
     }
 
     public function render(): void {
-        $course_id = get_the_ID();
+        $post_id = get_the_ID();
 
-        if ( 'course' !== get_post_type( $course_id ) ) {
+        // On a Course this is the course itself; on a Lesson or Unit it
+        // is that post's parent course, which is what makes the tag
+        // usable from the lesson archive.
+        $course_id = 'course' === get_post_type( $post_id )
+            ? (int) $post_id
+            : Film_School_Parent_Course_Tag::parent_course_id();
+
+        if ( ! $course_id ) {
             return;
         }
 

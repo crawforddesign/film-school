@@ -143,7 +143,7 @@ Note that `user_can_access_course()` treats "no groups assigned" as open to ever
 
 A **Lesson Count** Dynamic Tag (group: Film School) is available on any widget's Dynamic Content — inside a Loop Item on the course archive, it outputs how many lessons the current Course has. It's a real Elementor Dynamic Tag, not a shortcode, since it's a single computed value rather than markup — use it directly in a Text/Heading widget the same way you'd use an ACF field's dynamic tag.
 
-A second tag, **First Lesson URL** (same group), resolves the current Course's first lesson — its first unit's first lesson if the course uses units, otherwise the first lesson directly under the course. Use it in a Button widget's Link field for a "Start Course" button on a Loop Item.
+A second tag, **First Lesson URL** (same group), resolves a Course's first lesson — its first unit's first lesson if the course uses units, otherwise the first lesson directly under the course. Use it in a Button widget's Link field for a "Start Course" button on a Loop Item. It resolves the course from whatever the current post is, so it also works on a Lesson or Unit Loop Item: on the `/lessons/` archive it gives each card a "Start at the beginning" link back to the top of that lesson's course. On a card for a lesson that *is* the course's first lesson, the link points at the card's own lesson.
 
 A third, **Logout URL** (same group), outputs `wp_logout_url()` — use it in a Button widget's Link field for a "Log Out" button, e.g. on the student profile page.
 
