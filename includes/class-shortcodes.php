@@ -6,6 +6,8 @@ class Film_School_Shortcodes {
     public static function init(): void {
         add_shortcode( 'lesson_quiz', [ __CLASS__, 'lesson_quiz' ] );
         add_shortcode( 'course_sidebar', [ __CLASS__, 'course_sidebar' ] );
+        add_shortcode( 'course_page_sidebar', [ __CLASS__, 'course_page_sidebar' ] );
+        add_shortcode( 'film_school_sidebar', [ __CLASS__, 'film_school_sidebar' ] );
         add_shortcode( 'next_lesson', [ __CLASS__, 'next_lesson' ] );
         add_shortcode( 'student_progress_summary', [ __CLASS__, 'progress_summary' ] );
         add_shortcode( 'student_quiz_history', [ __CLASS__, 'quiz_history' ] );
@@ -277,6 +279,124 @@ class Film_School_Shortcodes {
         $user_id   = $is_public ? 0 : get_current_user_id();
         $completed = $is_public ? [] : Film_School_Progress::get_completed_lessons( $user_id );
 
+        ob_start();
+        self::print_sidebar_assets();
+        ?>
+        <div class="fs-sidebar">
+            <?php self::render_course_body( $course_id, $current_id, $completed, $user_id, $is_public ); ?>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Course-template counterpart to [course_sidebar]: the course itself
+     * as the parent row, with its units/lessons nested underneath. Same
+     * per-lesson state (done / locked / plain links on a public course)
+     * as the lesson sidebar, minus a "current lesson" — nothing is a
+     * lesson here — so every unit opens by default rather than just the
+     * one you're in.
+     */
+    public static function course_page_sidebar(): string {
+        if ( ! is_singular( 'course' ) ) {
+            return '';
+        }
+
+        $course_id = get_queried_object_id();
+        $is_public = Film_School_Groups::is_public_course( $course_id );
+
+        if ( ! $is_public && ! is_user_logged_in() ) {
+            return '';
+        }
+
+        $user_id = $is_public ? 0 : get_current_user_id();
+
+        // A course the student isn't in shouldn't advertise its contents.
+        if ( ! Film_School_Groups::user_can_access_course( $user_id, $course_id ) ) {
+            return '';
+        }
+
+        $completed = $is_public ? [] : Film_School_Progress::get_completed_lessons( $user_id );
+
+        ob_start();
+        self::print_sidebar_assets();
+        ?>
+        <div class="fs-sidebar fs-sidebar--course">
+            <div class="fs-course fs-course--open fs-course--current">
+                <div class="fs-course-head">
+                    <span class="fs-course-title"><?php echo esc_html( get_the_title( $course_id ) ); ?></span>
+                </div>
+                <div class="fs-course-body">
+                    <?php self::render_course_body( $course_id, 0, $completed, $user_id, $is_public, true ); ?>
+                </div>
+            </div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Whole-library navigator for a "Film School" landing page: every
+     * course the visitor can reach, each collapsible, with its units
+     * and lessons nested inside. Unlike the other two sidebars this
+     * isn't tied to a post type — it renders anywhere — and it works
+     * logged out, showing only public courses. The course you're
+     * currently inside (viewing the course, one of its units, or one
+     * of its lessons) is the one that starts open; if you're nowhere
+     * in particular, they all start closed.
+     */
+    public static function film_school_sidebar(): string {
+        $user_id  = get_current_user_id();
+        $courses  = array_filter(
+            get_posts( [ 'post_type' => 'course', 'numberposts' => -1, 'orderby' => 'menu_order title', 'order' => 'ASC' ] ),
+            fn( $course ) => Film_School_Groups::user_can_access_course( $user_id, $course->ID )
+        );
+
+        if ( ! $courses ) {
+            return '';
+        }
+
+        $current_id     = self::current_lesson_id();
+        $current_course = self::current_course_id();
+        $completed      = $user_id ? Film_School_Progress::get_completed_lessons( $user_id ) : [];
+
+        ob_start();
+        self::print_sidebar_assets();
+        ?>
+        <div class="fs-sidebar fs-sidebar--library">
+            <?php foreach ( $courses as $course ) :
+                // Per-course, not per-sidebar: a public course drops to
+                // plain links even for a logged-in student, matching
+                // what [course_sidebar] does on that course's lessons.
+                $is_public   = Film_School_Groups::is_public_course( $course->ID );
+                $course_user = $is_public ? 0 : $user_id;
+                $is_open     = $course->ID === $current_course;
+                ?>
+                <div class="fs-course <?php echo $is_open ? 'fs-course--open' : ''; ?>">
+                    <div class="fs-course-head">
+                        <a class="fs-course-title" href="<?php echo esc_url( get_permalink( $course ) ); ?>"><?php echo esc_html( $course->post_title ); ?></a>
+                        <button type="button" class="fs-course-toggle" aria-expanded="<?php echo $is_open ? 'true' : 'false'; ?>">
+                            <span class="screen-reader-text"><?php echo esc_html( sprintf( 'Toggle %s', $course->post_title ) ); ?></span>
+                            <span class="fs-chevron" aria-hidden="true">&#9662;</span>
+                        </button>
+                    </div>
+                    <div class="fs-course-body" <?php echo $is_open ? '' : 'style="display:none;"'; ?>>
+                        <?php self::render_course_body( $course->ID, $current_id, $is_public ? [] : $completed, $course_user, $is_public, true ); ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * The units-and-lessons body shared by all three sidebars. Falls
+     * back to a flat lesson list for a course with no units. $open_all
+     * forces every unit open, for the contexts where there's no current
+     * lesson to single one out.
+     */
+    private static function render_course_body( int $course_id, int $current_id, array $completed, int $user_id, bool $is_public, bool $open_all = false ): void {
         $units = get_posts( [
             'post_type'   => 'unit',
             'numberposts' => -1,
@@ -286,59 +406,75 @@ class Film_School_Shortcodes {
             'meta_query'  => [ [ 'key' => 'parent_course', 'value' => $course_id ] ],
         ] );
 
-        ob_start();
-        self::print_sidebar_assets();
-        ?>
-        <div class="fs-sidebar">
-            <?php if ( $units ) : ?>
-                <?php foreach ( $units as $index => $unit ) :
-                    $lessons = get_posts( [
-                        'post_type'   => 'lesson',
-                        'numberposts' => -1,
-                        'meta_key'    => 'lesson_order',
-                        'orderby'     => 'meta_value_num',
-                        'order'       => 'ASC',
-                        'meta_query'  => [ [ 'key' => 'parent_unit', 'value' => $unit->ID ] ],
-                    ] );
-                    $is_open = in_array( $current_id, wp_list_pluck( $lessons, 'ID' ), true );
-                    ?>
-                    <div class="fs-unit <?php echo $is_open ? 'fs-unit--open' : ''; ?>">
-                        <button type="button" class="fs-unit-toggle">
-                            <span class="fs-unit-num"><?php echo esc_html( $index + 1 ); ?></span>
-                            <span class="fs-unit-title"><?php echo esc_html( $unit->post_title ); ?></span>
-                            <span class="fs-chevron">&#9662;</span>
-                        </button>
-                        <ul class="fs-lesson-list" <?php echo $is_open ? '' : 'style="display:none;"'; ?>>
-                            <?php foreach ( $lessons as $lesson ) : self::render_sidebar_row( $lesson, $current_id, $completed, $user_id, $is_public ); endforeach; ?>
-                        </ul>
-                    </div>
-                <?php endforeach; ?>
-            <?php else : ?>
-                <?php
+        if ( $units ) {
+            foreach ( $units as $index => $unit ) {
                 $lessons = get_posts( [
                     'post_type'   => 'lesson',
                     'numberposts' => -1,
                     'meta_key'    => 'lesson_order',
                     'orderby'     => 'meta_value_num',
                     'order'       => 'ASC',
-                    'meta_query'  => [
-                        'relation' => 'AND',
-                        [ 'key' => 'parent_course', 'value' => $course_id ],
-                        [
-                            'relation' => 'OR',
-                            [ 'key' => 'parent_unit', 'compare' => 'NOT EXISTS' ],
-                            [ 'key' => 'parent_unit', 'value' => '', 'compare' => '=' ],
-                        ],
-                    ],
+                    'meta_query'  => [ [ 'key' => 'parent_unit', 'value' => $unit->ID ] ],
                 ] );
+                $is_open = $open_all || in_array( $current_id, wp_list_pluck( $lessons, 'ID' ), true );
                 ?>
-                <ul class="fs-lesson-list fs-lesson-list--flat">
-                    <?php foreach ( $lessons as $lesson ) : self::render_sidebar_row( $lesson, $current_id, $completed, $user_id, $is_public ); endforeach; ?>
-                </ul>
-            <?php endif; ?>
-        </div>
+                <div class="fs-unit <?php echo $is_open ? 'fs-unit--open' : ''; ?>">
+                    <button type="button" class="fs-unit-toggle" aria-expanded="<?php echo $is_open ? 'true' : 'false'; ?>">
+                        <span class="fs-unit-num"><?php echo esc_html( $index + 1 ); ?></span>
+                        <span class="fs-unit-title"><?php echo esc_html( $unit->post_title ); ?></span>
+                        <span class="fs-chevron" aria-hidden="true">&#9662;</span>
+                    </button>
+                    <ul class="fs-lesson-list" <?php echo $is_open ? '' : 'style="display:none;"'; ?>>
+                        <?php foreach ( $lessons as $lesson ) : self::render_sidebar_row( $lesson, $current_id, $completed, $user_id, $is_public ); endforeach; ?>
+                    </ul>
+                </div>
+                <?php
+            }
+            return;
+        }
+
+        $lessons = get_posts( [
+            'post_type'   => 'lesson',
+            'numberposts' => -1,
+            'meta_key'    => 'lesson_order',
+            'orderby'     => 'meta_value_num',
+            'order'       => 'ASC',
+            'meta_query'  => [
+                'relation' => 'AND',
+                [ 'key' => 'parent_course', 'value' => $course_id ],
+                [
+                    'relation' => 'OR',
+                    [ 'key' => 'parent_unit', 'compare' => 'NOT EXISTS' ],
+                    [ 'key' => 'parent_unit', 'value' => '', 'compare' => '=' ],
+                ],
+            ],
+        ] );
+        ?>
+        <ul class="fs-lesson-list fs-lesson-list--flat">
+            <?php foreach ( $lessons as $lesson ) : self::render_sidebar_row( $lesson, $current_id, $completed, $user_id, $is_public ); endforeach; ?>
+        </ul>
         <?php
-        return ob_get_clean();
+    }
+
+    /** The lesson being viewed, or 0 if this isn't a lesson page. */
+    private static function current_lesson_id(): int {
+        return is_singular( 'lesson' ) ? get_queried_object_id() : 0;
+    }
+
+    /**
+     * The course the current page sits in — whether that's the course
+     * itself, one of its units, or one of its lessons. 0 anywhere else.
+     */
+    private static function current_course_id(): int {
+        if ( is_singular( 'course' ) ) {
+            return get_queried_object_id();
+        }
+
+        if ( is_singular( [ 'unit', 'lesson' ] ) ) {
+            return (int) get_field( 'parent_course', get_queried_object_id() );
+        }
+
+        return 0;
     }
 
     private static function render_sidebar_row( WP_Post $lesson, int $current_id, array $completed, int $user_id, bool $is_public = false ): void {
@@ -395,6 +531,22 @@ class Film_School_Shortcodes {
         ?>
         <style>
             .fs-sidebar { font-size: 14px; }
+            .fs-course { margin-bottom: 8px; }
+            .fs-course-head {
+                display: flex; align-items: center; gap: 8px;
+                padding: 10px 0; border-bottom: 1px solid #e2e2e2;
+            }
+            .fs-course-title {
+                flex: 1; font-weight: 700; font-size: 16px;
+                color: #222; text-decoration: none;
+            }
+            a.fs-course-title:hover { color: #12b76a; }
+            .fs-course--current > .fs-course-head .fs-course-title { color: #12b76a; }
+            .fs-course-toggle {
+                background: none; border: none; padding: 4px; cursor: pointer; line-height: 1;
+            }
+            .fs-course-body { padding-top: 6px; }
+            .fs-course--open > .fs-course-head .fs-chevron { transform: rotate(180deg); }
             .fs-unit { margin-bottom: 4px; }
             .fs-unit-toggle {
                 display: flex; align-items: center; gap: 10px; width: 100%;
@@ -410,7 +562,7 @@ class Film_School_Shortcodes {
             .fs-unit--open > .fs-unit-toggle .fs-unit-num { background: #12b76a; color: #fff; }
             .fs-unit-title { flex: 1; }
             .fs-chevron { transition: transform .15s ease; color: #888; }
-            .fs-unit--open .fs-chevron { transform: rotate(180deg); }
+            .fs-unit--open > .fs-unit-toggle .fs-chevron { transform: rotate(180deg); }
             .fs-lesson-list {
                 list-style: none; margin: 0 0 8px 12px; padding: 0 0 0 20px;
                 border-left: 2px solid #e2e2e2;
@@ -425,12 +577,14 @@ class Film_School_Shortcodes {
         </style>
         <script>
         document.addEventListener('click', function (e) {
-            var btn = e.target.closest('.fs-unit-toggle');
+            var btn = e.target.closest('.fs-unit-toggle, .fs-course-toggle');
             if (!btn) return;
-            var unit = btn.closest('.fs-unit');
-            var list = unit.querySelector('.fs-lesson-list');
-            var open = unit.classList.toggle('fs-unit--open');
-            list.style.display = open ? '' : 'none';
+            var isUnit = btn.classList.contains('fs-unit-toggle');
+            var wrap = btn.closest(isUnit ? '.fs-unit' : '.fs-course');
+            var body = wrap.querySelector(isUnit ? '.fs-lesson-list' : '.fs-course-body');
+            var open = wrap.classList.toggle(isUnit ? 'fs-unit--open' : 'fs-course--open');
+            if (body) body.style.display = open ? '' : 'none';
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
         });
         </script>
         <?php

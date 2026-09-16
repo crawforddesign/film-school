@@ -63,12 +63,16 @@ Courses, Units, and Lessons all have their **Date** column hidden by default (st
 |---|---|---|
 | `[lesson_quiz]` | Lesson template only | Renders the quiz linked to the current lesson, if any |
 | `[course_sidebar]` | Lesson template only | Collapsible unit/lesson navigator. On a private course: progress checkmarks, current-lesson highlight, locked-lesson indicators. On a public course: plain links only, no login required |
+| `[course_page_sidebar]` | Course template only | Same navigator, rooted at the course itself: the course title as the parent row with its units/lessons nested underneath. Every unit starts open (there's no current lesson to single one out) |
+| `[film_school_sidebar]` | Any page (Film School landing page) | Whole-library navigator: every course the visitor can access, each collapsible, with its units and lessons nested inside. Works logged out (public courses only) |
 | `[next_lesson]` | Lesson template only | "Next Up" card linking to the next lesson in sequence, with an arrow button. Rolls over to the next unit's first lesson if the current one is last in its unit. Empty on the last lesson in a course |
 | `[student_progress_summary]` | Any page (student profile) | Per-course completion bar + "Continue" link, scoped to courses the student can access |
 | `[student_quiz_history]` | Any page (student profile) | Table of the logged-in user's quiz attempts, with retake links on fails |
 | `[student_assignments]` | Any page (student profile) | To-do list of quizzes the student hasn't passed yet (reachable lessons only) |
 
-`[lesson_quiz]` and `[course_sidebar]` check `is_singular('lesson')` and render nothing anywhere else, including Course and Unit templates. The three `student_*` shortcodes aren't tied to a post type — they only require a logged-in user, so they belong on a standalone profile page rather than a template.
+`[lesson_quiz]` and `[course_sidebar]` check `is_singular('lesson')` and render nothing anywhere else, including Course and Unit templates; `[course_page_sidebar]` is the mirror image — `is_singular('course')` only. `[film_school_sidebar]` isn't tied to a post type at all, so it can go on a normal page; if that page happens to sit inside a course (or you drop it on a lesson/unit/course template), the course you're currently in is the one that starts expanded, otherwise they all start collapsed.
+
+All three sidebars share one renderer, so per-lesson state is identical across them: checkmarks, current-lesson highlight, and lock icons on a private course; plain links on a public one. Public is decided per course, not per sidebar — in `[film_school_sidebar]` a public course drops to plain links even for a logged-in student, exactly as `[course_sidebar]` does on that course's own lessons. Course visibility in `[film_school_sidebar]` uses the same rule as the course archive (`user_can_access_course()`): public courses for anyone, plus unrestricted or group-assigned ones once logged in. The three `student_*` shortcodes aren't tied to a post type — they only require a logged-in user, so they belong on a standalone profile page rather than a template.
 
 ## Grade Book
 
