@@ -127,7 +127,6 @@ class Film_School_Shortcodes {
         $next_id    = self::find_next_lesson( $current_id );
 
         ob_start();
-        self::print_next_lesson_assets();
 
         if ( $next_id ) {
             ?>
@@ -264,69 +263,6 @@ class Film_School_Shortcodes {
         return $next ? (int) $next[0]->ID : null;
     }
 
-    private static function print_next_lesson_assets(): void {
-        static $printed = false;
-        if ( $printed ) {
-            return;
-        }
-        $printed = true;
-        ?>
-        <style>
-            .fs-next-up {
-                margin: 24px 0;
-            }
-            .fs-next-up-link,
-            .fs-next-up-end {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 16px;
-                padding: 16px 20px;
-                border: 1px solid var(--e-global-color-68cab22);
-                border-radius: 8px;
-                text-decoration: none;
-                color: inherit;
-            }
-            .fs-next-up-inline-link {
-                color: #ffae00;
-                text-decoration: underline;
-            }
-            .fs-next-up-inline-link:hover {
-                text-decoration: none;
-            }
-            .fs-next-up-text {
-                display: flex;
-                flex-direction: column;
-                gap: 6px;
-            }
-            .fs-next-up-label {
-                text-transform: uppercase;
-                letter-spacing: .05em;
-                color: #ffae00;
-                font-family: var(--e-global-typography-0e39a90-font-family);
-                font-size: var(--e-global-typography-5d6e7b2-font-size);
-            }
-            .fs-next-up-title {
-                font-weight: 700;
-                font-size: var(--e-global-typography-f51f501-font-size);
-                color: #f5f5f5;
-                font-family: 'gotham', sans-serif;
-            }
-            .fs-next-up-arrow {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                width: 32px;
-                height: 32px;
-                border-radius: 50%;
-                background: #ffae00;
-                color: #f5f5f5;
-                flex-shrink: 0;
-            }
-        </style>
-        <?php
-    }
-
     /**
      * Collapsible unit/lesson navigator for the current lesson's course.
      * On a private course: checkmark on completed lessons, chevron on
@@ -360,7 +296,6 @@ class Film_School_Shortcodes {
         $completed = $is_public ? [] : Film_School_Progress::get_completed_lessons( $user_id );
 
         ob_start();
-        self::print_sidebar_assets();
         ?>
         <div class="fs-sidebar">
             <?php self::render_course_body( $course_id, $current_id, $completed, $user_id, $is_public ); ?>
@@ -399,7 +334,6 @@ class Film_School_Shortcodes {
         $completed = $is_public ? [] : Film_School_Progress::get_completed_lessons( $user_id );
 
         ob_start();
-        self::print_sidebar_assets();
         ?>
         <div class="fs-sidebar fs-sidebar--course">
             <div class="fs-course fs-course--open fs-course--current">
@@ -441,7 +375,6 @@ class Film_School_Shortcodes {
         $completed      = $user_id ? Film_School_Progress::get_completed_lessons( $user_id ) : [];
 
         ob_start();
-        self::print_sidebar_assets();
         ?>
         <div class="fs-sidebar fs-sidebar--library">
             <?php foreach ( $courses as $course ) :
@@ -601,74 +534,6 @@ class Film_School_Shortcodes {
                 <a href="<?php echo esc_url( get_permalink( $lesson ) ); ?>"><?php echo esc_html( $lesson->post_title ); ?></a>
             <?php endif; ?>
         </li>
-        <?php
-    }
-
-    private static function print_sidebar_assets(): void {
-        static $printed = false;
-        if ( $printed ) {
-            return;
-        }
-        $printed = true;
-        ?>
-        <style>
-            .fs-sidebar { font-size: 14px; }
-            .fs-course { margin-bottom: 8px; }
-            .fs-course-head {
-                display: flex; align-items: center; gap: 8px;
-                padding: 10px 0; border-bottom: 1px solid #e2e2e2;
-            }
-            .fs-course-title {
-                flex: 1; font-weight: 700; font-size: 16px;
-                color: #222; text-decoration: none;
-            }
-            a.fs-course-title:hover { color: #12b76a; }
-            .fs-course--current > .fs-course-head .fs-course-title { color: #12b76a; }
-            .fs-course-toggle {
-                background: none; border: none; padding: 4px; cursor: pointer; line-height: 1;
-            }
-            .fs-course-body { padding-top: 6px; }
-            .fs-course--open > .fs-course-head .fs-chevron { transform: rotate(180deg); }
-            .fs-unit { margin-bottom: 4px; }
-            .fs-unit-toggle {
-                display: flex; align-items: center; gap: 10px; width: 100%;
-                background: none; border: none; padding: 8px 0; cursor: pointer;
-                font-weight: 700; font-size: 15px; text-align: left;
-            }
-            .fs-unit-num {
-                display: flex; align-items: center; justify-content: center;
-                width: 24px; height: 24px; border-radius: 50%;
-                background: #e2e2e2; color: #666; font-size: 12px; font-weight: 700;
-                flex-shrink: 0;
-            }
-            .fs-unit--open > .fs-unit-toggle .fs-unit-num { background: #12b76a; color: #fff; }
-            .fs-unit-title { flex: 1; }
-            .fs-chevron { transition: transform .15s ease; color: #888; }
-            .fs-unit--open > .fs-unit-toggle .fs-chevron { transform: rotate(180deg); }
-            .fs-lesson-list {
-                list-style: none; margin: 0 0 8px 12px; padding: 0 0 0 20px;
-                border-left: 2px solid #e2e2e2;
-            }
-            .fs-lesson-list--flat { border-left: none; margin-left: 0; padding-left: 0; }
-            .fs-lesson { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
-            .fs-lesson a { color: #333; text-decoration: none; }
-            .fs-lesson--current a { font-weight: 700; color: #12b76a; }
-            .fs-lesson--done .fs-icon { color: #12b76a; }
-            .fs-lesson--locked { color: #aaa; }
-            .fs-icon { width: 16px; text-align: center; flex-shrink: 0; color: #999; font-size: 13px; }
-        </style>
-        <script>
-        document.addEventListener('click', function (e) {
-            var btn = e.target.closest('.fs-unit-toggle, .fs-course-toggle');
-            if (!btn) return;
-            var isUnit = btn.classList.contains('fs-unit-toggle');
-            var wrap = btn.closest(isUnit ? '.fs-unit' : '.fs-course');
-            var body = wrap.querySelector(isUnit ? '.fs-lesson-list' : '.fs-course-body');
-            var open = wrap.classList.toggle(isUnit ? 'fs-unit--open' : 'fs-course--open');
-            if (body) body.style.display = open ? '' : 'none';
-            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-        });
-        </script>
         <?php
     }
 

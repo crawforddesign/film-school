@@ -97,6 +97,12 @@ add_filter( 'show_admin_bar', function ( $show ) {
 
 add_action( 'wp_enqueue_scripts', function () {
     wp_enqueue_style( 'film-school', FILM_SCHOOL_URL . 'assets/css/film-school.css', [], FILM_SCHOOL_VERSION );
+
+    // Sidebar collapse/expand. One delegated listener, no dependencies.
+    // Loaded site-wide rather than per-shortcode: the shortcodes can be
+    // rendered late (inside an Elementor widget, a loop item, a popup),
+    // by which point conditionally enqueuing is no longer possible.
+    wp_enqueue_script( 'film-school', FILM_SCHOOL_URL . 'assets/js/film-school.js', [], FILM_SCHOOL_VERSION, true );
 } );
 
 // Flag missing dependencies rather than fatal-erroring.

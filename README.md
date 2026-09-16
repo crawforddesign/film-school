@@ -135,6 +135,23 @@ A second tag, **First Lesson URL** (same group), resolves the current Course's f
 
 A third, **Logout URL** (same group), outputs `wp_logout_url()` — use it in a Button widget's Link field for a "Log Out" button, e.g. on the student profile page.
 
+## Styling
+
+All front-end styles live in `assets/css/film-school.css`, enqueued as a normal stylesheet. The sidebars and the Next Up card used to print `<style>` blocks inline from PHP, which meant three different palettes and no way to restyle any of it without editing plugin code.
+
+Colors are CSS custom properties on `:root`. Override them from the theme to restyle the plugin wholesale — no PHP edits, no `!important`:
+
+```css
+:root {
+    --fs-accent: #c8102e;      /* progress bars, checkmarks, current lesson, Mark Complete */
+    --fs-next-accent: #ffae00; /* the Next Up card */
+}
+```
+
+`--fs-accent` and `--fs-next-accent` are deliberately separate: the Next Up card is tuned for the dark section it sits in, and still reads Elementor's own global typography/color variables for the site's fonts. **Note:** the "Continue" button and progress bars in `[student_progress_summary]` were WordPress admin blue (`#2271b1`) before this consolidation and are now `--fs-accent` green, matching the rest of the plugin. Set `--fs-accent: #2271b1;` to put them back.
+
+Sidebar collapse/expand is `assets/js/film-school.js` — one delegated listener, no dependencies, loaded in the footer. It's site-wide rather than per-shortcode because the shortcodes can render late (inside an Elementor widget, a loop item, a popup), too late to enqueue conditionally.
+
 ## Automatic updates
 
 Film School isn't listed on wordpress.org, so it ships with [Plugin Update Checker](https://github.com/YahnisElsts/plugin-update-checker) (vendored at `includes/plugin-update-checker/`), pointed at this repo's GitHub Releases. This is what makes "Update available" and the native "Update Now" button show up on a client site's Plugins page — no manual re-upload/replace needed.
