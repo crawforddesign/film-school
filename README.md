@@ -84,7 +84,7 @@ Courses, Units, and Lessons all have their **Date** column hidden by default (st
 |---|---|---|
 | `[lesson_quiz]` | Lesson template only | Renders the quiz linked to the current lesson, if any |
 | `[lesson_complete]` | Lesson template only | "Mark Complete" button for a lesson with no quiz — the completion event for that lesson. Becomes a "Completed" badge with an Undo once clicked. Renders nothing on a quiz-linked lesson or a public course |
-| `[course_sidebar]` | Lesson template only | Collapsible unit/lesson navigator, headed by the course title (linking back to the course page; `show_title="no"` to omit it). On a private course: progress checkmarks, current-lesson highlight, locked-lesson indicators. On a public course: plain links only, no login required |
+| `[course_sidebar]` | Lesson template only | Collapsible unit/lesson navigator, headed by the course title (linking back to the course page; `show_title="no"` to omit it). Signed in: progress checkmarks, current-lesson highlight, locked-lesson indicators. Anonymous (public courses only): plain links, no login required |
 | `[course_page_sidebar]` | Course template only | Same navigator, rooted at the course itself: the course title as the parent row with its units/lessons nested underneath. Every unit starts open (there's no current lesson to single one out) |
 | `[film_school_sidebar]` | Any page (Film School landing page) | Whole-library navigator: every course the visitor can access, each collapsible, with its units and lessons nested inside. Works logged out (public courses only) |
 | `[next_lesson]` | Lesson template only | "Next Up" card linking to the next lesson in sequence, with an arrow button. Rolls over to the next unit's first lesson if the current one is last in its unit. Shows an "End of Course" card on the last lesson |
@@ -126,7 +126,14 @@ Group restriction is enforced at the same gate lesson prerequisites go through (
 
 ## Public courses
 
-A course's **Public Course** field opens it up with no login required — overrides Restricted To Groups entirely. Because there's no logged-in user to track state for, this also switches off prerequisite gating and progress tracking for that course's lessons: `[course_sidebar]` still renders for anonymous visitors, but drops to plain links with no checkmarks or locks (nothing to check off), while `[lesson_quiz]` still renders and the quiz can still be taken anonymously — the score just isn't saved anywhere. Public is an all-or-nothing switch per course, not "public but still tracked."
+A course's **Public Course** field opens it up with no login required — overrides Restricted To Groups entirely. What it changes depends on *who is visiting*, not on the course:
+
+- **Anonymous visitors** get the lessons, quizzes and assignments, but there's no account to record against. `[course_sidebar]` drops to plain links with no checkmarks, `[lesson_complete]` doesn't render, and a quiz can be taken but the score isn't saved.
+- **Signed-in students** get full tracking on a public course, exactly as on any other: Mark Complete, checkmarks, quiz scores, and a progress bar that actually moves.
+
+**Prerequisites never gate a public course, for anyone** — including signed-in students. A public course is one anyone can take, so gating it on prerequisites would leave a signed-in student with *less* access than a stranger. Progress is recorded there; it just doesn't gate anything.
+
+Earlier versions keyed all of this on the course rather than the visitor, so a signed-in student could finish a whole public course and find it still at 0% on their profile, with no Mark Complete button anywhere to fix it.
 
 ## Course archive
 

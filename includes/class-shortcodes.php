@@ -416,8 +416,12 @@ class Film_School_Shortcodes {
             return '';
         }
 
-        $user_id   = $is_public ? 0 : get_current_user_id();
-        $completed = $is_public ? [] : Film_School_Progress::get_completed_lessons( $user_id );
+        // 0 for an anonymous visitor, who can only be here on a public
+        // course. A signed-in student gets their real progress even on
+        // a public one — being public says nothing about whether there
+        // is someone to track.
+        $user_id   = get_current_user_id();
+        $completed = $user_id ? Film_School_Progress::get_completed_lessons( $user_id ) : [];
 
         ob_start();
         ?>
@@ -427,7 +431,7 @@ class Film_School_Shortcodes {
                     <a class="fs-course-title" href="<?php echo esc_url( get_permalink( $course_id ) ); ?>"><?php echo esc_html( get_the_title( $course_id ) ); ?></a>
                 </div>
             <?php endif; ?>
-            <?php self::render_course_body( $course_id, $current_id, $completed, $user_id, $is_public ); ?>
+            <?php self::render_course_body( $course_id, $current_id, $completed, $user_id ); ?>
         </div>
         <?php
         return ob_get_clean();
@@ -453,14 +457,14 @@ class Film_School_Shortcodes {
             return '';
         }
 
-        $user_id = $is_public ? 0 : get_current_user_id();
+        $user_id = get_current_user_id();
 
         // A course the student isn't in shouldn't advertise its contents.
         if ( ! Film_School_Groups::user_can_access_course( $user_id, $course_id ) ) {
             return '';
         }
 
-        $completed = $is_public ? [] : Film_School_Progress::get_completed_lessons( $user_id );
+        $completed = $user_id ? Film_School_Progress::get_completed_lessons( $user_id ) : [];
 
         ob_start();
         ?>
@@ -470,7 +474,7 @@ class Film_School_Shortcodes {
                     <span class="fs-course-title"><?php echo esc_html( get_the_title( $course_id ) ); ?></span>
                 </div>
                 <div class="fs-course-body">
-                    <?php self::render_course_body( $course_id, 0, $completed, $user_id, $is_public, true ); ?>
+                    <?php self::render_course_body( $course_id, 0, $completed, $user_id, true ); ?>
                 </div>
             </div>
         </div>
@@ -507,12 +511,7 @@ class Film_School_Shortcodes {
         ?>
         <div class="fs-sidebar fs-sidebar--library">
             <?php foreach ( $courses as $course ) :
-                // Per-course, not per-sidebar: a public course drops to
-                // plain links even for a logged-in student, matching
-                // what [course_sidebar] does on that course's lessons.
-                $is_public   = Film_School_Groups::is_public_course( $course->ID );
-                $course_user = $is_public ? 0 : $user_id;
-                $is_open     = $course->ID === $current_course;
+                $is_open = $course->ID === $current_course;
                 ?>
                 <div class="fs-course <?php echo $is_open ? 'fs-course--open' : ''; ?>">
                     <div class="fs-course-head">
@@ -523,7 +522,7 @@ class Film_School_Shortcodes {
                         </button>
                     </div>
                     <div class="fs-course-body" <?php echo $is_open ? '' : 'style="display:none;"'; ?>>
-                        <?php self::render_course_body( $course->ID, $current_id, $is_public ? [] : $completed, $course_user, $is_public, true ); ?>
+                        <?php self::render_course_body( $course->ID, $current_id, $completed, $user_id, true ); ?>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -538,7 +537,7 @@ class Film_School_Shortcodes {
      * forces every unit open, for the contexts where there's no current
      * lesson to single one out.
      */
-    private static function render_course_body( int $course_id, int $current_id, array $completed, int $user_id, bool $is_public, bool $open_all = false ): void {
+    private static function render_course_body( int $course_id, int $current_id, array $completed, int $user_id, bool $open_all = false ): void {
         $units = get_posts( [
             'post_type'   => 'unit',
             'numberposts' => -1,
@@ -567,7 +566,7 @@ class Film_School_Shortcodes {
                         <span class="fs-chevron" aria-hidden="true">&#9662;</span>
                     </button>
                     <ul class="fs-lesson-list" <?php echo $is_open ? '' : 'style="display:none;"'; ?>>
-                        <?php foreach ( $lessons as $lesson ) : self::render_sidebar_row( $lesson, $current_id, $completed, $user_id, $is_public ); endforeach; ?>
+                        <?php foreach ( $lessons as $lesson ) : self::render_sidebar_row( $lesson, $current_id, $completed, $user_id ); endforeach; ?>
                     </ul>
                 </div>
                 <?php
@@ -593,7 +592,7 @@ class Film_School_Shortcodes {
         ] );
         ?>
         <ul class="fs-lesson-list fs-lesson-list--flat">
-            <?php foreach ( $lessons as $lesson ) : self::render_sidebar_row( $lesson, $current_id, $completed, $user_id, $is_public ); endforeach; ?>
+            <?php foreach ( $lessons as $lesson ) : self::render_sidebar_row( $lesson, $current_id, $completed, $user_id ); endforeach; ?>
         </ul>
         <?php
     }
@@ -621,12 +620,16 @@ class Film_School_Shortcodes {
         return 0;
     }
 
-    private static function render_sidebar_row( WP_Post $lesson, int $current_id, array $completed, int $user_id, bool $is_public = false ): void {
+    private static function render_sidebar_row( WP_Post $lesson, int $current_id, array $completed, int $user_id ): void {
         $is_current = $lesson->ID === $current_id;
 
-        // Public course: no login, no tracking — every lesson is just
-        // a plain link with no done/locked state to reflect.
-        if ( $is_public ) {
+        // Anonymous visitor — only ever possible on a public course.
+        // No per-user state to reflect, so a plain link. A signed-in
+        // student falls through and gets done/locked state, on a public
+        // course as much as a restricted one; is_lesson_locked() is
+        // what keeps public courses ungated, and it already returns
+        // false for them.
+        if ( ! $user_id ) {
             $classes = [ 'fs-lesson' ];
             if ( $is_current ) {
                 $classes[] = 'fs-lesson--current';

@@ -161,7 +161,7 @@ class Film_School_Groups {
                     'name'         => 'is_public',
                     'type'         => 'true_false',
                     'ui'           => 1,
-                    'instructions' => "No login required. Overrides Restricted To Groups below — a public course is open to everyone, so group restriction doesn't apply. Note: without a logged-in user there's no one to track progress for, so lesson completion, prerequisites, and the lesson sidebar's checkmarks don't apply to anonymous visitors on a public course.",
+                    'instructions' => "No login required. Overrides Restricted To Groups below — a public course is open to everyone, so group restriction doesn't apply. Signed-in students still get their progress tracked here: completion, checkmarks and the progress bar all work as they do on any other course. Anonymous visitors get the lessons, quizzes and assignments, but there's no account to record anything against, so they see plain links and no progress. Prerequisites never gate a public course, for anyone — otherwise a signed-in student would have less access than a stranger.",
                 ],
                 [
                     'key'           => 'field_course_restricted_groups',

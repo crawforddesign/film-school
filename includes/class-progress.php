@@ -148,22 +148,23 @@ class Film_School_Progress {
     /**
      * Whether a lesson can be completed by hand at all. A quiz-linked
      * lesson can't — passing the quiz is its completion event, and a
-     * button beside it would let a student skip the assessment. A
-     * public-course lesson can't either: no login, so no one to record
-     * it against.
+     * button beside it would let a student skip the assessment.
+     *
+     * Public-course lessons used to be excluded too, on the grounds
+     * that a public course has no login and so no one to record
+     * against. That is true of anonymous visitors, but it was being
+     * applied to signed-in students as well: a logged-in student could
+     * work through a whole public course and the button never appeared,
+     * leaving the progress bar frozen at 0% forever. Whether there is
+     * someone to record against is a question about the visitor, not
+     * the course, and both callers already require a logged-in user.
      */
     public static function lesson_is_manually_completable( int $lesson_id ): bool {
         if ( 'lesson' !== get_post_type( $lesson_id ) ) {
             return false;
         }
 
-        if ( get_field( 'quiz_form', $lesson_id ) ) {
-            return false;
-        }
-
-        $course_id = (int) get_field( 'parent_course', $lesson_id );
-
-        return ! ( $course_id && Film_School_Groups::is_public_course( $course_id ) );
+        return ! get_field( 'quiz_form', $lesson_id );
     }
 
     /**
@@ -245,8 +246,11 @@ class Film_School_Progress {
     /**
      * Runs on every single-lesson request. Public-course lessons skip
      * every check below — no login requirement, no group restriction,
-     * no prerequisite chain, since none of that can be evaluated for
-     * an anonymous visitor. Everything else requires login, group
+     * no prerequisite chain. That holds for signed-in students too,
+     * deliberately: a public course is one anyone can take, so gating
+     * it on prerequisites would leave a logged-in student with less
+     * access than a stranger. Their progress is still recorded; it just
+     * doesn't gate anything. Everything else requires login, group
      * access if restricted, and prerequisite completion.
      */
     public static function enforce_lesson_gate(): void {
