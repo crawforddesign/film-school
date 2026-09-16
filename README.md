@@ -151,7 +151,7 @@ Colors are CSS custom properties on `:root`. Override them from the theme to res
 }
 ```
 
-`--fs-accent` and `--fs-next-accent` are deliberately separate: the Next Up card is tuned for the dark section it sits in, and still reads Elementor's own global typography/color variables for the site's fonts. **Note:** the "Continue" button and progress bars in `[student_progress_summary]` were WordPress admin blue (`#2271b1`) before this consolidation and are now `--fs-accent` green, matching the rest of the plugin. Set `--fs-accent: #2271b1;` to put them back.
+`--fs-accent` and `--fs-next-accent` are deliberately separate: the Next Up card is tuned for the dark section it sits in, and still reads Elementor's own global typography/color variables for the site's fonts. **Note:** the "Continue" button and progress bars in `[student_progress_summary]` were WordPress admin blue (`#2271b1`) before this consolidation and are now `--fs-accent`, matching the rest of the plugin. Set `--fs-accent: #2271b1;` to put them back.
 
 Sidebar collapse/expand is `assets/js/film-school.js` — one delegated listener, no dependencies, loaded in the footer. It's site-wide rather than per-shortcode because the shortcodes can render late (inside an Elementor widget, a loop item, a popup), too late to enqueue conditionally.
 

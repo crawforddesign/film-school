@@ -15,6 +15,9 @@
   --fs-primary: #18181b;
   --fs-primary-fg: #fafafa;
   --fs-ring: rgba(0, 0, 0, 0.06);
+  /* Mirrors --fs-accent-text in assets/css/film-school.css so the admin
+     "Complete" states match the front-end badges. */
+  --fs-accent-text: #B87D00;
   --fs-radius: 6px;
   --fs-radius-lg: 10px;
   --fs-sidebar-w: 200px;
@@ -73,7 +76,7 @@
 }
 
 /* Named .fs-chip (not .fs-badge) — assets/css/film-school.css already
-   defines .fs-badge on the front end (a green/red pass-fail pill) with
+   defines .fs-badge on the front end (an accent/red pass-fail pill) with
    completely different styling; a distinct name keeps the two from ever
    colliding if both stylesheets are ever loaded on the same screen. */
 .fs-chip {
@@ -94,7 +97,7 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #15803d;
+  color: var(--fs-accent-text);
 }
 
 .fs-success-notice svg {
@@ -519,7 +522,7 @@
 }
 
 .fs-status-done {
-  color: #15803d;
+  color: var(--fs-accent-text);
   font-weight: 500;
 }
 

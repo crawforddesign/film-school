@@ -14,10 +14,10 @@
 
 :root {
     /* Progress, completion, current-lesson — the plugin's main accent. */
-    --fs-accent: #12b76a;
-    --fs-accent-hover: #0e9a58;
-    --fs-accent-soft: #edfaef;
-    --fs-accent-text: #1a7a2e;
+    --fs-accent: #FFAE00;
+    --fs-accent-hover: #E09900;
+    --fs-accent-soft: #fff4e5;
+    --fs-accent-text: #B87D00;
 
     /* The Next Up card, tuned to the Prize Foundation dark section it
        sits in. Separate from --fs-accent on purpose: it's a different
@@ -209,7 +209,7 @@
 /* A few classes the shortcodes render carry no rules here on purpose —
    .fs-sidebar--course, .fs-sidebar--library, .fs-complete--done,
    .fs-icon--lock and .fs-pass. They're targeting hooks for the theme
-   (and .fs-pass is a badge that wants the default green), not
+   (and .fs-pass is a badge that wants the default accent), not
    oversights. */
 
 /* ── Course / unit / lesson navigator ──
@@ -226,7 +226,6 @@
     align-items: center;
     gap: 8px;
     padding: 10px 0;
-    border-bottom: 1px solid var(--fs-border);
 }
 .fs-course-title {
     flex: 1;
@@ -234,6 +233,9 @@
     font-size: 16px;
     color: inherit;
     text-decoration: none;
+    font-family: 'veneer', sans-serif;
+    font-size: 2.5rem;
+    padding-bottom: 1rem;
 }
 a.fs-course-title:hover,
 .fs-course--current > .fs-course-head .fs-course-title {
