@@ -12,6 +12,7 @@ class Film_School_Groups {
         add_action( 'init', [ __CLASS__, 'register_post_type' ] );
         add_action( 'acf/init', [ __CLASS__, 'register_fields' ] );
         add_action( 'pre_get_posts', [ __CLASS__, 'filter_course_archive' ] );
+        add_action( 'pre_get_posts', [ __CLASS__, 'filter_lesson_archive' ] );
     }
 
     /**
@@ -38,6 +39,50 @@ class Film_School_Groups {
         // back to "no restriction"), so force a non-matching ID instead
         // to correctly show zero results when nothing's accessible.
         $query->set( 'post__in', $visible ?: [ 0 ] );
+    }
+
+    /**
+     * The lesson archive inherits its course's access rules: a lesson is
+     * listed only when the visitor could open the course it belongs to.
+     * Anonymous visitors therefore see public courses' lessons only.
+     *
+     * Access is resolved per course and applied as a meta_query rather
+     * than walking every lesson, so the work scales with the number of
+     * courses (a handful, each needing a group lookup) instead of the
+     * number of lessons.
+     *
+     * Prerequisite-locked lessons are deliberately still listed — they
+     * belong to a course the student is in, the sidebars show them the
+     * same way, and enforce_lesson_gate() still redirects on click. Use
+     * the Lesson Locked dynamic tag to badge them in the Loop Item.
+     */
+    public static function filter_lesson_archive( WP_Query $query ): void {
+        if ( is_admin() || ! $query->is_main_query() || ! $query->is_post_type_archive( 'lesson' ) ) {
+            return;
+        }
+
+        $user_id = get_current_user_id(); // 0 for anonymous visitors.
+        $all_ids = get_posts( [ 'post_type' => 'course', 'numberposts' => -1, 'fields' => 'ids' ] );
+        $visible = array_values( array_filter(
+            $all_ids,
+            fn( $id ) => self::user_can_access_course( $user_id, $id )
+        ) );
+
+        // Nothing accessible: force zero results. post__in with an empty
+        // array is ignored by WP_Query, so use a non-matching ID.
+        if ( ! $visible ) {
+            $query->set( 'post__in', [ 0 ] );
+            return;
+        }
+
+        $meta_query   = (array) ( $query->get( 'meta_query' ) ?: [] );
+        $meta_query[] = [
+            'key'     => 'parent_course',
+            'value'   => $visible,
+            'compare' => 'IN',
+        ];
+
+        $query->set( 'meta_query', $meta_query );
     }
 
     public static function register_post_type(): void {
@@ -131,6 +176,15 @@ class Film_School_Groups {
     public static function user_can_access_course( int $user_id, int $course_id ): bool {
         if ( self::is_public_course( $course_id ) ) {
             return true;
+        }
+
+        // Everything past this point is a student affordance. "No groups
+        // assigned" means open to every *student*, not to the whole
+        // internet: without this check an anonymous visitor (user 0)
+        // fell through to the empty-groups branch below and could see
+        // every course that simply had no group on it.
+        if ( ! $user_id ) {
+            return false;
         }
 
         $groups = get_field( 'restricted_groups', $course_id );

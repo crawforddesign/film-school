@@ -130,7 +130,16 @@ A course's **Public Course** field opens it up with no login required — overri
 
 ## Course archive
 
-`course` has `has_archive => true`, so `/courses/` exists automatically. Its main query is filtered (`pre_get_posts`) down to whatever the current visitor can access — public courses for anyone, plus (once logged in) unrestricted or group-assigned ones. Anonymous visitors no longer get redirected away from the archive itself; they just see whatever's public.
+`course` has `has_archive => true`, so `/courses/` exists automatically at the rewrite slug — `has_archive => true` means "use `rewrite['slug']`", which is `courses`. `lesson` has `has_archive => 'lessons'` with `rewrite['slug'] => 'lesson'`, so its archive is `/lessons/` while singles sit at `/lesson/{slug}/`. Units have no public URL at all.
+
+Both archives' main queries are filtered (`pre_get_posts`) down to what the current visitor can access:
+
+- **Logged out** — public courses only (`is_public`), and on `/lessons/` their lessons.
+- **Logged in** — the above, plus courses with no groups assigned (open by default) and courses whose assigned groups they belong to.
+
+`filter_lesson_archive()` resolves access per *course* and applies it to lessons as a `parent_course` `meta_query`, so the cost scales with the number of courses rather than the number of lessons. Prerequisite-locked lessons are still listed — they belong to a course the student is in, the sidebars show them the same way, and `enforce_lesson_gate()` still redirects on click. Use the **Lesson Locked** dynamic tag to badge them in the Loop Item.
+
+Note that `user_can_access_course()` treats "no groups assigned" as open to every *student*, not to the public: an anonymous visitor (user `0`) is held to public courses. Build either archive with Elementor's Loop Grid on **Current Query** — the filtering happens in the main query, so the widget needs no configuration of its own.
 
 A **Lesson Count** Dynamic Tag (group: Film School) is available on any widget's Dynamic Content — inside a Loop Item on the course archive, it outputs how many lessons the current Course has. It's a real Elementor Dynamic Tag, not a shortcode, since it's a single computed value rather than markup — use it directly in a Text/Heading widget the same way you'd use an ACF field's dynamic tag.
 
