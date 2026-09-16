@@ -17,6 +17,25 @@ class Film_School_ACF_Fields {
             return;
         }
 
+        // --- Course -------------------------------------------------
+        acf_add_local_field_group( [
+            'key'    => 'group_film_school_course',
+            'title'  => 'Course Settings',
+            'fields' => [
+                [
+                    'key'           => 'field_course_order',
+                    'label'         => 'Course Order',
+                    'name'          => 'course_order',
+                    'type'          => 'number',
+                    'default_value' => 1,
+                    'instructions'  => 'Position of this course in the library. Lower numbers come first; ties fall back to title. Courses that existed before this field was added were numbered from their previous order, so the library reads the same until you change something.',
+                ],
+            ],
+            'location' => [
+                [ [ 'param' => 'post_type', 'operator' => '==', 'value' => 'course' ] ],
+            ],
+        ] );
+
         // --- Unit ---------------------------------------------------
         acf_add_local_field_group( [
             'key'    => 'group_film_school_unit',

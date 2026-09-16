@@ -54,5 +54,8 @@ delete_option( 'film_school_login_required_page_id' );
 // plugin version last flushed rewrite rules.
 delete_option( 'film_school_rewrite_version' );
 
+// One-shot guard for the Course Order backfill.
+delete_option( 'film_school_course_order_backfilled' );
+
 // Rewrite rules referencing the now-unregistered CPTs.
 flush_rewrite_rules();

@@ -155,9 +155,11 @@ ACF's own dynamic tag can't do this job: `parent_course` is a `post_object` fiel
 
 ### Ordering a Loop Grid
 
-**Lesson Order** and **Unit Order** appear in Elementor's **Order By** dropdown on the Loop Grid, Loop Carousel, Posts and Archive Posts widgets. Both are ACF number fields, and Elementor's Order By only offers post columns, so `includes/class-elementor-query.php` adds them.
+**Course Order**, **Lesson Order** and **Unit Order** appear in Elementor's **Order By** dropdown on the Loop Grid, Loop Carousel, Posts and Archive Posts widgets. All three are ACF number fields, and Elementor's Order By only offers post columns, so `includes/class-elementor-query.php` adds them.
 
-Courses need nothing: they sort on WordPress's own `menu_order` (set per course in Page Attributes → Order), which Elementor already offers as **Menu Order**.
+`course_order` also drives the library navigator (`[film_school_sidebar]`) and `[student_progress_summary]`, which sort on it directly. Those sort in PHP rather than with a meta query: a meta sort INNER JOINs and would silently drop a course with no `course_order` row, and vanishing from the navigator is a worse failure than sorting last. Missing values sort to the end, ties fall back to title.
+
+Courses that predate the field are numbered once by `Film_School_Activation::backfill_course_order()` on `admin_init`, seeded from the order the library already used (`menu_order`, then title), so nothing visibly moves until a number is edited. It's guarded by the `film_school_course_order_backfilled` option and never overwrites a value that's already set.
 
 The option is matched to Elementor's control by *shape* — a `select` whose name ends in `orderby` and which already offers `date` and `title` — rather than by a hardcoded control name, because those names are not a public API. The sort itself runs in `pre_get_posts`, which is core and stable: Elementor passes the chosen value straight through to `WP_Query`, so a query asking for `orderby => lesson_order` sorts correctly no matter what Elementor changes. If a future Elementor release ever breaks the dropdown injection, the sort is still reachable by setting a Query ID on the widget and calling `$query->set( 'orderby', 'lesson_order' )`. Add widgets to the list with the `film_school_orderby_widgets` filter.
 

@@ -19,6 +19,47 @@ class Film_School_Activation {
         // in place on deactivation — only removed via uninstall.php.
     }
 
+    /**
+     * Numbers existing courses for the Course Order field.
+     *
+     * The field ships with a default of 1, but ACF only writes a default
+     * when a post is saved — every course that existed beforehand would
+     * have no value at all and would sort to the end of the library in
+     * an arbitrary clump. This seeds them from the arrangement they
+     * already had (menu_order, then title, which is how the library
+     * navigator used to sort), so nothing visibly moves until someone
+     * actually edits a number.
+     *
+     * Runs once, guarded by an option, on admin_init — plugin updates
+     * don't re-fire the activation hook.
+     */
+    public static function backfill_course_order(): void {
+        if ( get_option( 'film_school_course_order_backfilled' ) ) {
+            return;
+        }
+
+        $courses = get_posts( [
+            'post_type'   => 'course',
+            'numberposts' => -1,
+            'orderby'     => 'menu_order title',
+            'order'       => 'ASC',
+            'fields'      => 'ids',
+        ] );
+
+        $position = 0;
+
+        foreach ( $courses as $course_id ) {
+            $position++;
+
+            // Never overwrite a value someone has already set.
+            if ( '' === (string) get_post_meta( $course_id, 'course_order', true ) ) {
+                update_post_meta( $course_id, 'course_order', $position );
+            }
+        }
+
+        update_option( 'film_school_course_order_backfilled', 1 );
+    }
+
     private static function create_tables(): void {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();

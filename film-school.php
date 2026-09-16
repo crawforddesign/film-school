@@ -4,7 +4,7 @@
  * Plugin URI:        https://crawforddesigngroup.com/
  * Update URI:        https://github.com/crawforddesign/film-school
  * Description:       Lightweight course platform for Prize Foundation — courses, units, lessons, Gravity Forms quiz integration, and student progress tracking.
- * Version:           1.5.8
+ * Version:           1.5.9
  * Requires at least: 6.4
  * Requires PHP:      8.0
  * Author:            Crawford Design Group
@@ -22,7 +22,7 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/plugin-update-checker/plugi
 
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
-define( 'FILM_SCHOOL_VERSION', '1.5.8' );
+define( 'FILM_SCHOOL_VERSION', '1.5.9' );
 define( 'FILM_SCHOOL_PATH', plugin_dir_path( __FILE__ ) );
 define( 'FILM_SCHOOL_URL', plugin_dir_url( __FILE__ ) );
 
@@ -78,6 +78,10 @@ add_action( 'plugins_loaded', function () {
 // The role is created on activation, but that hook doesn't re-fire on
 // a plain file update — this keeps it self-healing either way.
 add_action( 'admin_init', [ 'Film_School_Activation', 'register_student_role' ] );
+
+// Seeds Course Order for courses that predate the field. Guarded by an
+// option, so this is a no-op on every load after the first.
+add_action( 'admin_init', [ 'Film_School_Activation', 'backfill_course_order' ] );
 
 // Students use the front end only — keep them out of wp-admin entirely.
 add_action( 'admin_init', function () {

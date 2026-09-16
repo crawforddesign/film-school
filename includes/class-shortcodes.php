@@ -491,7 +491,7 @@ class Film_School_Shortcodes {
     public static function film_school_sidebar(): string {
         $user_id  = get_current_user_id();
         $courses  = array_filter(
-            get_posts( [ 'post_type' => 'course', 'numberposts' => -1, 'orderby' => 'menu_order title', 'order' => 'ASC' ] ),
+            self::all_courses_ordered(),
             fn( $course ) => Film_School_Groups::user_can_access_course( $user_id, $course->ID )
         );
 
@@ -538,6 +538,34 @@ class Film_School_Shortcodes {
      * forces every unit open, for the contexts where there's no current
      * lesson to single one out.
      */
+    /**
+     * Every course, ordered by the Course Order field.
+     *
+     * Sorted in PHP rather than with meta_key + meta_value_num, because
+     * a meta sort INNER JOINs and silently drops any course with no
+     * course_order row — one imported, or created in code, or never
+     * re-saved. Vanishing from the library navigator is a far worse
+     * failure than sorting last, so a missing value goes to the end and
+     * ties fall back to title.
+     */
+    private static function all_courses_ordered(): array {
+        $courses = get_posts( [ 'post_type' => 'course', 'numberposts' => -1 ] );
+
+        usort( $courses, static function ( $a, $b ) {
+            $a_raw = get_post_meta( $a->ID, 'course_order', true );
+            $b_raw = get_post_meta( $b->ID, 'course_order', true );
+
+            // No value sorts last, rather than sorting as 0 and jumping
+            // to the front of the list.
+            $a_key = '' === (string) $a_raw ? PHP_INT_MAX : (int) $a_raw;
+            $b_key = '' === (string) $b_raw ? PHP_INT_MAX : (int) $b_raw;
+
+            return ( $a_key <=> $b_key ) ?: strcasecmp( $a->post_title, $b->post_title );
+        } );
+
+        return $courses;
+    }
+
     private static function render_course_body( int $course_id, int $current_id, array $completed, int $user_id, bool $is_public, bool $open_all = false ): void {
         $units = get_posts( [
             'post_type'   => 'unit',
@@ -679,7 +707,7 @@ class Film_School_Shortcodes {
         $user_id   = get_current_user_id();
         $completed = Film_School_Progress::get_completed_lessons( $user_id );
         $courses   = array_filter(
-            get_posts( [ 'post_type' => 'course', 'numberposts' => -1 ] ),
+            self::all_courses_ordered(),
             fn( $course ) => Film_School_Groups::user_can_access_course( $user_id, $course->ID )
         );
 

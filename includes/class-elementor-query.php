@@ -7,8 +7,7 @@ defined( 'ABSPATH' ) || exit;
  * Both are ACF number fields, and Elementor's Order By control only
  * offers post columns (date, title, menu order, rand) — sorting by meta
  * needs a meta_key and orderby => meta_value_num, which that dropdown
- * has no way to express. Courses need nothing here: they sort on
- * WordPress's own menu_order, which Elementor already offers.
+ * has no way to express.
  *
  * Two halves, deliberately split:
  *
@@ -29,6 +28,7 @@ class Film_School_Elementor_Query {
 
     /** Order By value (and ACF meta key) => label shown in the dropdown. */
     private const ORDER_FIELDS = [
+        'course_order' => 'Course Order',
         'lesson_order' => 'Lesson Order',
         'unit_order'   => 'Unit Order',
     ];
