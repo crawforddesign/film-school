@@ -19,7 +19,7 @@ An admin notice appears on any wp-admin screen if either dependency isn't active
 5. **Add students** — Users → Add New, with role set to **Student**. Film School → Students is a shortcut to the Users list pre-filtered to that role.
 6. **Restrict a course (optional)** — create a **Group** (Film School → Groups), add student members, then set that course's **Restricted To Groups** field. Leave it empty to keep a course open to everyone.
 7. **Build the front end in Elementor**:
-   - Lesson template (Theme Builder → Single, Post Type: Lesson) — drop in `[lesson_quiz]`, `[lesson_complete]`, and `[course_sidebar]`.
+   - Lesson template (Theme Builder → Single, Post Type: Lesson) — drop in `[lesson_quiz]`, `[lesson_complete]`, `[course_sidebar]`, and `[prev_lesson]` / `[next_lesson]`.
    - Course archive (Theme Builder → Archive, Post Type: Course) — a Loop Grid widget on "Current Query" already reflects each student's access, no shortcode needed.
    - A student profile page (a normal Page, e.g. `/my-progress/`) — `[student_progress_summary]`, `[student_quiz_history]`, and `[student_assignments]`.
 
@@ -84,15 +84,18 @@ Courses, Units, and Lessons all have their **Date** column hidden by default (st
 |---|---|---|
 | `[lesson_quiz]` | Lesson template only | Renders the quiz linked to the current lesson, if any |
 | `[lesson_complete]` | Lesson template only | "Mark Complete" button for a lesson with no quiz — the completion event for that lesson. Becomes a "Completed" badge with an Undo once clicked. Renders nothing on a quiz-linked lesson or a public course |
-| `[course_sidebar]` | Lesson template only | Collapsible unit/lesson navigator. On a private course: progress checkmarks, current-lesson highlight, locked-lesson indicators. On a public course: plain links only, no login required |
+| `[course_sidebar]` | Lesson template only | Collapsible unit/lesson navigator, headed by the course title (linking back to the course page; `show_title="no"` to omit it). On a private course: progress checkmarks, current-lesson highlight, locked-lesson indicators. On a public course: plain links only, no login required |
 | `[course_page_sidebar]` | Course template only | Same navigator, rooted at the course itself: the course title as the parent row with its units/lessons nested underneath. Every unit starts open (there's no current lesson to single one out) |
 | `[film_school_sidebar]` | Any page (Film School landing page) | Whole-library navigator: every course the visitor can access, each collapsible, with its units and lessons nested inside. Works logged out (public courses only) |
-| `[next_lesson]` | Lesson template only | "Next Up" card linking to the next lesson in sequence, with an arrow button. Rolls over to the next unit's first lesson if the current one is last in its unit. Empty on the last lesson in a course |
+| `[next_lesson]` | Lesson template only | "Next Up" card linking to the next lesson in sequence, with an arrow button. Rolls over to the next unit's first lesson if the current one is last in its unit. Shows an "End of Course" card on the last lesson |
+| `[prev_lesson]` | Lesson template only | "Previous" card, the mirror of `[next_lesson]` — same sequence walked backwards, rolling back to the previous unit's *last* lesson across a unit boundary. Renders nothing on the first lesson of a course |
 | `[student_progress_summary]` | Any page (student profile) | Per-course completion bar + "Continue" link, scoped to courses the student can access |
 | `[student_quiz_history]` | Any page (student profile) | Table of the logged-in user's quiz attempts, with retake links on fails |
 | `[student_assignments]` | Any page (student profile) | To-do list of quizzes the student hasn't passed yet (reachable lessons only) |
 
 `[lesson_quiz]` and `[course_sidebar]` check `is_singular('lesson')` and render nothing anywhere else, including Course and Unit templates; `[course_page_sidebar]` is the mirror image — `is_singular('course')` only. `[film_school_sidebar]` isn't tied to a post type at all, so it can go on a normal page; if that page happens to sit inside a course (or you drop it on a lesson/unit/course template), the course you're currently in is the one that starts expanded, otherwise they all start collapsed.
+
+`[prev_lesson]` and `[next_lesson]` walk the same sequence in opposite directions and are built on one lookup, so they can't disagree about what's adjacent. Neither checks lock status — they're position pointers, not gates, and clicking through to a locked lesson still redirects per the usual gate. `[next_lesson]` ends a course with an "End of Course" card; `[prev_lesson]` renders nothing at the start of one, since finishing a course is an event worth marking and arriving at lesson 1 isn't.
 
 All three sidebars share one renderer, so per-lesson state is identical across them: checkmarks, current-lesson highlight, and lock icons on a private course; plain links on a public one. Public is decided per course, not per sidebar — in `[film_school_sidebar]` a public course drops to plain links even for a logged-in student, exactly as `[course_sidebar]` does on that course's own lessons. Course visibility in `[film_school_sidebar]` uses the same rule as the course archive (`user_can_access_course()`): public courses for anyone, plus unrestricted or group-assigned ones once logged in. The three `student_*` shortcodes aren't tied to a post type — they only require a logged-in user, so they belong on a standalone profile page rather than a template.
 

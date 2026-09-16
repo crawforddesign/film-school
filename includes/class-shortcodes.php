@@ -10,6 +10,7 @@ class Film_School_Shortcodes {
         add_shortcode( 'course_page_sidebar', [ __CLASS__, 'course_page_sidebar' ] );
         add_shortcode( 'film_school_sidebar', [ __CLASS__, 'film_school_sidebar' ] );
         add_shortcode( 'next_lesson', [ __CLASS__, 'next_lesson' ] );
+        add_shortcode( 'prev_lesson', [ __CLASS__, 'prev_lesson' ] );
         add_shortcode( 'student_progress_summary', [ __CLASS__, 'progress_summary' ] );
         add_shortcode( 'student_quiz_history', [ __CLASS__, 'quiz_history' ] );
         add_shortcode( 'student_assignments', [ __CLASS__, 'assignments' ] );
@@ -109,6 +110,52 @@ class Film_School_Shortcodes {
     }
 
     /**
+     * "Previous" card — the mirror of [next_lesson], walking the same
+     * sequence backwards: within the current lesson's unit, rolling
+     * back to the *last* lesson of the preceding unit when this is the
+     * first one in its unit, or walking lesson_order directly for a
+     * flat course.
+     *
+     * Renders nothing on the first lesson of a course. [next_lesson]
+     * has an end-of-course card in the equivalent spot because
+     * finishing a course is an event worth marking; arriving at
+     * lesson 1 isn't — there's just nothing behind you.
+     *
+     * Like [next_lesson], it doesn't check lock status. It's a "what
+     * came before" pointer, not a gate, and a lesson you've already
+     * been through is unlocked by definition.
+     */
+    public static function prev_lesson(): string {
+        if ( ! is_singular( 'lesson' ) ) {
+            return '';
+        }
+
+        $prev_id = self::find_prev_lesson( get_queried_object_id() );
+
+        if ( ! $prev_id ) {
+            return '';
+        }
+
+        ob_start();
+        ?>
+        <div class="fs-next-up fs-prev-up">
+            <a class="fs-next-up-link" href="<?php echo esc_url( get_permalink( $prev_id ) ); ?>">
+                <span class="fs-next-up-arrow" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 12H5M5 12L11 6M5 12L11 18" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </span>
+                <span class="fs-next-up-text">
+                    <span class="fs-next-up-label">Previous</span>
+                    <span class="fs-next-up-title"><?php echo esc_html( get_the_title( $prev_id ) ); ?></span>
+                </span>
+            </a>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
      * "Next Up" card linking to the next lesson in sequence — within
      * the current lesson's unit if it has one, rolling over to the
      * next unit's first lesson if it's the last one in its unit, or
@@ -193,14 +240,15 @@ class Film_School_Shortcodes {
         if ( ! $unit_id ) {
             // Flat course — walk lesson_order directly, excluding
             // anything that belongs to a unit.
-            return self::get_next_lesson_by_order(
+            return self::get_adjacent_lesson_by_order(
                 [ 'key' => 'parent_course', 'value' => $course_id ],
                 $order,
+                'next',
                 true
             );
         }
 
-        $next = self::get_next_lesson_by_order( [ 'key' => 'parent_unit', 'value' => $unit_id ], $order );
+        $next = self::get_adjacent_lesson_by_order( [ 'key' => 'parent_unit', 'value' => $unit_id ], $order, 'next' );
         if ( $next ) {
             return $next;
         }
@@ -236,11 +284,80 @@ class Film_School_Shortcodes {
         return $first ? (int) $first[0]->ID : null;
     }
 
-    private static function get_next_lesson_by_order( array $scope, float $order, bool $flat_only = false ): ?int {
+    /**
+     * find_next_lesson() in reverse. Same three cases — inside a unit,
+     * rolling back across a unit boundary, or a flat course — with the
+     * comparison and sort flipped, and the cross-unit case landing on
+     * the previous unit's LAST lesson rather than its first.
+     */
+    private static function find_prev_lesson( int $current_id ): ?int {
+        $course_id = (int) get_field( 'parent_course', $current_id );
+        if ( ! $course_id ) {
+            return null;
+        }
+
+        $unit_id = (int) get_field( 'parent_unit', $current_id );
+        $order   = (float) get_field( 'lesson_order', $current_id );
+
+        if ( ! $unit_id ) {
+            return self::get_adjacent_lesson_by_order(
+                [ 'key' => 'parent_course', 'value' => $course_id ],
+                $order,
+                'prev',
+                true
+            );
+        }
+
+        $prev = self::get_adjacent_lesson_by_order( [ 'key' => 'parent_unit', 'value' => $unit_id ], $order, 'prev' );
+        if ( $prev ) {
+            return $prev;
+        }
+
+        // First lesson in its unit — roll back to the previous unit's
+        // last lesson.
+        $unit_order = (float) get_field( 'unit_order', $unit_id );
+        $prev_units = get_posts( [
+            'post_type'   => 'unit',
+            'numberposts' => 1,
+            'meta_key'    => 'unit_order',
+            'orderby'     => 'meta_value_num',
+            'order'       => 'DESC',
+            'meta_query'  => [
+                'relation' => 'AND',
+                [ 'key' => 'parent_course', 'value' => $course_id ],
+                [ 'key' => 'unit_order', 'value' => $unit_order, 'compare' => '<', 'type' => 'NUMERIC' ],
+            ],
+        ] );
+
+        if ( ! $prev_units ) {
+            return null;
+        }
+
+        $last = get_posts( [
+            'post_type'   => 'lesson',
+            'numberposts' => 1,
+            'meta_key'    => 'lesson_order',
+            'orderby'     => 'meta_value_num',
+            'order'       => 'DESC',
+            'meta_query'  => [ [ 'key' => 'parent_unit', 'value' => $prev_units[0]->ID ] ],
+        ] );
+
+        return $last ? (int) $last[0]->ID : null;
+    }
+
+    /**
+     * The lesson immediately before or after $order within $scope (a
+     * unit, or a whole course for a flat one). $flat_only excludes
+     * lessons that belong to a unit, so a flat course's walk doesn't
+     * wander into a unit-based part of the same course.
+     */
+    private static function get_adjacent_lesson_by_order( array $scope, float $order, string $direction = 'next', bool $flat_only = false ): ?int {
+        $is_next = 'prev' !== $direction;
+
         $meta_query = [
             'relation' => 'AND',
             $scope,
-            [ 'key' => 'lesson_order', 'value' => $order, 'compare' => '>', 'type' => 'NUMERIC' ],
+            [ 'key' => 'lesson_order', 'value' => $order, 'compare' => $is_next ? '>' : '<', 'type' => 'NUMERIC' ],
         ];
 
         if ( $flat_only ) {
@@ -251,16 +368,18 @@ class Film_School_Shortcodes {
             ];
         }
 
-        $next = get_posts( [
+        // Sorting toward the current lesson from either side means the
+        // first row back is always the adjacent one.
+        $found = get_posts( [
             'post_type'   => 'lesson',
             'numberposts' => 1,
             'meta_key'    => 'lesson_order',
             'orderby'     => 'meta_value_num',
-            'order'       => 'ASC',
+            'order'       => $is_next ? 'ASC' : 'DESC',
             'meta_query'  => $meta_query,
         ] );
 
-        return $next ? (int) $next[0]->ID : null;
+        return $found ? (int) $found[0]->ID : null;
     }
 
     /**
@@ -270,14 +389,19 @@ class Film_School_Shortcodes {
      * requires login. On a public course: plain links for every lesson,
      * no login required, since there's no per-user state to reflect.
      * Only the unit containing the current lesson opens by default.
+     * Headed by the course title, linking back to the course page, so
+     * a student always knows which course they're inside — pass
+     * show_title="no" if the template already has a heading above it.
      * Works for both unit-based and flat courses. Self-contained
      * (prints its own scoped CSS/JS once) so it costs nothing on pages
      * where it isn't used.
      */
-    public static function course_sidebar(): string {
+    public static function course_sidebar( $atts = [] ): string {
         if ( ! is_singular( 'lesson' ) ) {
             return '';
         }
+
+        $atts = shortcode_atts( [ 'show_title' => 'yes' ], $atts, 'course_sidebar' );
 
         $current_id = get_queried_object_id();
         $course_id  = (int) get_field( 'parent_course', $current_id );
@@ -298,6 +422,11 @@ class Film_School_Shortcodes {
         ob_start();
         ?>
         <div class="fs-sidebar">
+            <?php if ( 'no' !== $atts['show_title'] ) : ?>
+                <div class="fs-course-head">
+                    <a class="fs-course-title" href="<?php echo esc_url( get_permalink( $course_id ) ); ?>"><?php echo esc_html( get_the_title( $course_id ) ); ?></a>
+                </div>
+            <?php endif; ?>
             <?php self::render_course_body( $course_id, $current_id, $completed, $user_id, $is_public ); ?>
         </div>
         <?php

@@ -334,7 +334,7 @@ a.fs-course-title:hover,
     font-size: 13px;
 }
 
-/* ── Next Up card ([next_lesson]) ── */
+/* ── Next Up / Previous cards ([next_lesson], [prev_lesson]) ── */
 .fs-next-up {
     margin: 24px 0;
 }
@@ -385,4 +385,16 @@ a.fs-course-title:hover,
     background: var(--fs-next-accent);
     color: var(--fs-next-text);
     flex-shrink: 0;
+}
+
+/* [prev_lesson] shares the Next Up card's markup, flipped: arrow first,
+   and outlined rather than filled, so that when both sit on a lesson
+   the forward action is still the one that reads as primary. */
+.fs-prev-up .fs-next-up-link {
+    justify-content: flex-start;
+}
+.fs-prev-up .fs-next-up-arrow {
+    background: transparent;
+    border: 1px solid var(--fs-next-accent);
+    color: var(--fs-next-accent);
 }
