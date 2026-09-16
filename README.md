@@ -138,6 +138,8 @@ A second tag, **First Lesson URL** (same group), resolves the current Course's f
 
 A third, **Logout URL** (same group), outputs `wp_logout_url()` — use it in a Button widget's Link field for a "Log Out" button, e.g. on the student profile page.
 
+A fourth, **Short Excerpt (characters)** (same group), trims the current post down to a character budget — 60 by default, set per-widget in the tag's own **Max characters** control. WordPress only counts excerpt length in words (`excerpt_length`, and Elementor's own Excerpt Length field), which can't express a character cap; card layouts need one, because characters are what decide whether the text wraps another line. It strips shortcodes and block markup before measuring, so the plugin's own `[lesson_quiz]` / `[next_lesson]` never leak into a card, won't split a word, and is multibyte-safe. A hand-written Excerpt wins over generated content but is held to the same budget. **Note:** it reads `post_content`, so a course or lesson laid out in the Elementor editor (content in `_elementor_data`) may have nothing to trim — fill in the post's Excerpt field in that case.
+
 ## Styling
 
 All front-end styles live in `assets/css/film-school.css`, enqueued as a normal stylesheet. The sidebars and the Next Up card used to print `<style>` blocks inline from PHP, which meant three different palettes and no way to restyle any of it without editing plugin code.

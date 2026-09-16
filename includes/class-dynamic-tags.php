@@ -27,11 +27,13 @@ class Film_School_Dynamic_Tags {
         require_once FILM_SCHOOL_PATH . 'includes/dynamic-tags/class-first-lesson-url-tag.php';
         require_once FILM_SCHOOL_PATH . 'includes/dynamic-tags/class-logout-url-tag.php';
         require_once FILM_SCHOOL_PATH . 'includes/dynamic-tags/class-lesson-locked-tag.php';
+        require_once FILM_SCHOOL_PATH . 'includes/dynamic-tags/class-short-excerpt-tag.php';
 
         $dynamic_tags_manager->register_group( 'film-school', [ 'title' => 'Film School' ] );
         $dynamic_tags_manager->register( new Film_School_Lesson_Count_Tag() );
         $dynamic_tags_manager->register( new Film_School_First_Lesson_Url_Tag() );
         $dynamic_tags_manager->register( new Film_School_Logout_Url_Tag() );
         $dynamic_tags_manager->register( new Film_School_Lesson_Locked_Tag() );
+        $dynamic_tags_manager->register( new Film_School_Short_Excerpt_Tag() );
     }
 }
