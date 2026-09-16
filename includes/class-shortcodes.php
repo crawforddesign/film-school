@@ -48,19 +48,34 @@ class Film_School_Shortcodes {
      * "Completed" badge with an Undo — a student who clicks by mistake
      * shouldn't need an admin to fix it.
      *
-     * Attributes: label, done_label, undo (yes/no) — e.g.
+     * Attributes: label, done_label, undo (yes/no), next (yes/no) — e.g.
      * [lesson_complete label="I've watched this" undo="no"]
+     *
+     * next="yes" sends the student to the next lesson after completing,
+     * collapsing "Mark Complete" then "Next Up" into one click. Left
+     * off by default because the two are independent: Next Up is a
+     * pointer, not a gate, and completing without moving on is what the
+     * last lesson of a course needs.
      */
     public static function lesson_complete( $atts = [] ): string {
         if ( ! is_singular( 'lesson' ) || ! is_user_logged_in() ) {
             return '';
         }
 
-        $atts = shortcode_atts( [
+        $provided = (array) $atts;
+        $atts     = shortcode_atts( [
             'label'      => 'Mark Complete',
             'done_label' => 'Completed',
             'undo'       => 'yes',
+            'next'       => 'no',
         ], $atts, 'lesson_complete' );
+
+        // "Mark Complete" reads oddly on a button that also moves you
+        // on, so next="yes" changes the default wording — but only the
+        // default: a label passed explicitly always wins.
+        if ( 'yes' === $atts['next'] && ! isset( $provided['label'] ) ) {
+            $atts['label'] = 'Complete & Continue';
+        }
 
         $lesson_id = get_queried_object_id();
         $user_id   = get_current_user_id();
@@ -99,6 +114,9 @@ class Film_School_Shortcodes {
                 <form class="fs-complete-form" method="post" action="<?php echo esc_url( get_permalink( $lesson_id ) ); ?>">
                     <?php wp_nonce_field( $nonce . '_' . $lesson_id ); ?>
                     <input type="hidden" name="lesson_id" value="<?php echo esc_attr( $lesson_id ); ?>">
+                    <?php if ( 'yes' === $atts['next'] ) : ?>
+                        <input type="hidden" name="fs_next" value="1">
+                    <?php endif; ?>
                     <button type="submit" class="fs-complete-btn" name="<?php echo esc_attr( $nonce ); ?>" value="1">
                         <?php echo esc_html( $atts['label'] ); ?>
                     </button>
@@ -228,7 +246,7 @@ class Film_School_Shortcodes {
         <?php
     }
 
-    private static function find_next_lesson( int $current_id ): ?int {
+    public static function find_next_lesson( int $current_id ): ?int {
         $course_id = (int) get_field( 'parent_course', $current_id );
         if ( ! $course_id ) {
             return null;

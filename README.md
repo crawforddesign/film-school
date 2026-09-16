@@ -48,6 +48,10 @@ A lesson is marked complete for a student in one of two ways, and which one appl
 - **Quiz lesson** — passing the linked quiz completes it, automatically. No button; a "Mark Complete" button next to a quiz would let a student skip the assessment.
 - **No quiz** — the student clicks **Mark Complete**, from the `[lesson_complete]` shortcode on the lesson template.
 
+By default that leaves them on the same lesson, so finishing and moving on is two clicks (**Mark Complete**, then **Next Up**). `[lesson_complete next="yes"]` collapses it into one: the button reads **Complete & Continue** and lands them on the next lesson. Pass `label` to override that wording. The destination is resolved server-side from the posted flag, never taken from the request, and **Undo** always stays on the current lesson. On the last lesson of a course there is no next, so it stays put and the End of Course card shows.
+
+It's off by default because completion and navigation are genuinely independent — `[next_lesson]` is a "what comes next" pointer rather than a gate, and a student can move on without completing. The trade-off of leaving it off is the quiet one: someone who only ever clicks Next Up reaches the end of a course at 0%.
+
 Drop `[lesson_complete]` on the lesson template once and it takes care of itself — it renders nothing on lessons that have a quiz, so there's no need for a display condition. It also renders nothing on a public course, where there's no logged-in user to record anything against.
 
 Completion is what drives prerequisite unlocking, the sidebar checkmarks, the progress bars in `[student_progress_summary]`, and the Grade Book — so **a course whose lessons have no quizzes needs this shortcode on the lesson template.** Without it those lessons can never be completed, which means anything gated behind one stays locked and the course can never reach 100%.

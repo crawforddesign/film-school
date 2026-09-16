@@ -206,13 +206,30 @@ class Film_School_Progress {
 
         $action = isset( $_POST['fs_action'] ) ? sanitize_key( wp_unslash( $_POST['fs_action'] ) ) : '';
 
+        $redirect = get_permalink( $lesson_id );
+
         if ( 'undo' === $action ) {
             self::mark_lesson_incomplete( $user_id, $lesson_id );
         } else {
             self::mark_lesson_complete( $user_id, $lesson_id );
+
+            // [lesson_complete next="yes"]. The posted flag only says
+            // "move on" — the destination is resolved here rather than
+            // taken from the request, so a forged field can't redirect
+            // anyone anywhere. Undo deliberately stays put: stepping
+            // forward is not what someone undoing a completion wants.
+            if ( ! empty( $_POST['fs_next'] ) ) {
+                $next_id = Film_School_Shortcodes::find_next_lesson( $lesson_id );
+
+                // No next lesson means this was the last one; staying
+                // put shows the End of Course card.
+                if ( $next_id ) {
+                    $redirect = get_permalink( $next_id );
+                }
+            }
         }
 
-        wp_safe_redirect( get_permalink( $lesson_id ) ?: home_url( '/' ) );
+        wp_safe_redirect( $redirect ?: home_url( '/' ) );
         exit;
     }
 
