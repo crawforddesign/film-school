@@ -1,20 +1,59 @@
+/**
+ * Film School — front-end styles.
+ *
+ * Everything the plugin's shortcodes render is styled here. Earlier
+ * versions printed <style> blocks inline from PHP (the sidebars and the
+ * Next Up card), which meant three separate palettes and no way for the
+ * theme to override any of it without editing plugin PHP.
+ *
+ * Colors are tokens on :root. Redefine any of them in the theme's own
+ * CSS to restyle the plugin wholesale — no PHP, no !important:
+ *
+ *   :root { --fs-accent: #c8102e; }
+ */
+
+:root {
+    /* Progress, completion, current-lesson — the plugin's main accent. */
+    --fs-accent: #12b76a;
+    --fs-accent-hover: #0e9a58;
+    --fs-accent-soft: #edfaef;
+    --fs-accent-text: #1a7a2e;
+
+    /* The Next Up card, tuned to the Prize Foundation dark section it
+       sits in. Separate from --fs-accent on purpose: it's a different
+       call to action against a different background. */
+    --fs-next-accent: #ffae00;
+    --fs-next-text: #f5f5f5;
+    --fs-next-border: var(--e-global-color-68cab22);
+
+    --fs-text: #333;
+    --fs-muted: #888;
+    --fs-faint: #aaa;
+    --fs-border: #e2e2e2;
+    --fs-rule: #eee;
+    --fs-fail-bg: #fbeaea;
+    --fs-fail-text: #a02222;
+    --fs-tag-bg: #fff4e5;
+    --fs-tag-text: #b8560a;
+}
+
 .fs-course-progress {
     margin-bottom: 24px;
 }
 .fs-progress-bar {
-    background: #eee;
+    background: var(--fs-rule);
     border-radius: 4px;
     height: 8px;
     overflow: hidden;
     margin: 6px 0;
 }
 .fs-progress-bar > div {
-    background: #2271b1;
+    background: var(--fs-accent);
     height: 100%;
 }
 .fs-btn {
     display: inline-block;
-    background: #2271b1;
+    background: var(--fs-accent);
     color: #fff;
     padding: 6px 14px;
     border-radius: 4px;
@@ -26,12 +65,12 @@
     font-size: 12px;
     padding: 2px 10px;
     border-radius: 10px;
-    background: #edfaef;
-    color: #1a7a2e;
+    background: var(--fs-accent-soft);
+    color: var(--fs-accent-text);
 }
 .fs-badge.fs-fail {
-    background: #fbeaea;
-    color: #a02222;
+    background: var(--fs-fail-bg);
+    color: var(--fs-fail-text);
 }
 .fs-quiz-history {
     width: 100%;
@@ -41,7 +80,7 @@
 .fs-quiz-history td {
     text-align: left;
     padding: 8px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--fs-rule);
     font-size: 14px;
 }
 .fs-todo-list {
@@ -54,14 +93,14 @@
     align-items: center;
     gap: 10px;
     padding: 10px 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--fs-rule);
 }
 .fs-todo-label {
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: .04em;
-    background: #fff4e5;
-    color: #b8560a;
+    background: var(--fs-tag-bg);
+    color: var(--fs-tag-text);
     padding: 2px 8px;
     border-radius: 10px;
     flex-shrink: 0;
@@ -103,4 +142,247 @@
 .fs-lesson-locked a {
     pointer-events: none;
     cursor: default;
+}
+
+/* ── Mark Complete ([lesson_complete]) ──
+   Lives here rather than in a printed <style> block so the client can
+   restyle it in the theme without touching PHP. */
+.fs-complete {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 16px 0;
+}
+.fs-complete-form {
+    margin: 0;
+}
+.fs-complete-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--fs-accent);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.fs-complete-btn:hover {
+    background: var(--fs-accent-hover);
+}
+.fs-complete-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--fs-accent-text);
+    font-weight: 600;
+    font-size: 15px;
+}
+.fs-complete-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--fs-accent);
+    color: #fff;
+    font-size: 13px;
+}
+.fs-complete-undo {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #777;
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.fs-complete-undo:hover {
+    color: #333;
+}
+
+
+/* A few classes the shortcodes render carry no rules here on purpose —
+   .fs-sidebar--course, .fs-sidebar--library, .fs-complete--done,
+   .fs-icon--lock and .fs-pass. They're targeting hooks for the theme
+   (and .fs-pass is a badge that wants the default green), not
+   oversights. */
+
+/* ── Course / unit / lesson navigator ──
+   Shared by [course_sidebar], [course_page_sidebar] and
+   [film_school_sidebar], which all render the same markup. */
+.fs-sidebar {
+    font-size: 14px;
+}
+.fs-course {
+    margin-bottom: 8px;
+}
+.fs-course-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--fs-border);
+}
+.fs-course-title {
+    flex: 1;
+    font-weight: 700;
+    font-size: 16px;
+    color: inherit;
+    text-decoration: none;
+}
+a.fs-course-title:hover,
+.fs-course--current > .fs-course-head .fs-course-title {
+    color: var(--fs-accent);
+}
+.fs-course-toggle {
+    background: none;
+    border: none;
+    padding: 4px;
+    line-height: 1;
+    cursor: pointer;
+}
+.fs-course-body {
+    padding-top: 6px;
+}
+.fs-course--open > .fs-course-head .fs-chevron {
+    transform: rotate(180deg);
+}
+.fs-unit {
+    margin-bottom: 4px;
+}
+.fs-unit-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 8px 0;
+    font-weight: 700;
+    font-size: 15px;
+    text-align: left;
+    cursor: pointer;
+}
+.fs-unit-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--fs-border);
+    color: #666;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.fs-unit--open > .fs-unit-toggle .fs-unit-num {
+    background: var(--fs-accent);
+    color: #fff;
+}
+.fs-unit-title {
+    flex: 1;
+}
+.fs-chevron {
+    color: var(--fs-muted);
+    transition: transform .15s ease;
+}
+.fs-unit--open > .fs-unit-toggle .fs-chevron {
+    transform: rotate(180deg);
+}
+.fs-lesson-list {
+    list-style: none;
+    margin: 0 0 8px 12px;
+    padding: 0 0 0 20px;
+    border-left: 2px solid var(--fs-border);
+}
+.fs-lesson-list--flat {
+    border-left: none;
+    margin-left: 0;
+    padding-left: 0;
+}
+.fs-lesson {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+}
+.fs-lesson a {
+    color: var(--fs-text);
+    text-decoration: none;
+}
+.fs-lesson--current a {
+    font-weight: 700;
+    color: var(--fs-accent);
+}
+.fs-lesson--done .fs-icon {
+    color: var(--fs-accent);
+}
+.fs-lesson--locked {
+    color: var(--fs-faint);
+}
+.fs-icon {
+    width: 16px;
+    flex-shrink: 0;
+    text-align: center;
+    color: #999;
+    font-size: 13px;
+}
+
+/* ── Next Up card ([next_lesson]) ── */
+.fs-next-up {
+    margin: 24px 0;
+}
+.fs-next-up-link,
+.fs-next-up-end {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px;
+    border: 1px solid var(--fs-next-border);
+    border-radius: 8px;
+    text-decoration: none;
+    color: inherit;
+}
+.fs-next-up-inline-link {
+    color: var(--fs-next-accent);
+    text-decoration: underline;
+}
+.fs-next-up-inline-link:hover {
+    text-decoration: none;
+}
+.fs-next-up-text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.fs-next-up-label {
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--fs-next-accent);
+    font-family: var(--e-global-typography-0e39a90-font-family);
+    font-size: var(--e-global-typography-5d6e7b2-font-size);
+}
+.fs-next-up-title {
+    font-weight: 700;
+    font-size: var(--e-global-typography-f51f501-font-size);
+    color: var(--fs-next-text);
+    font-family: 'gotham', sans-serif;
+}
+.fs-next-up-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--fs-next-accent);
+    color: var(--fs-next-text);
+    flex-shrink: 0;
 }

@@ -107,14 +107,25 @@ class Film_School_Post_Types {
             'rewrite'      => [ 'slug' => 'courses', 'with_front' => false ],
         ] );
 
+        // Units are structure, not a destination. They organize lessons
+        // inside a course and show up in the sidebars, but they have no
+        // page of their own: nothing in the plugin renders a unit's
+        // contents on a unit URL, and because a unit isn't a lesson it
+        // never passes through enforce_lesson_gate() either — so a
+        // public /unit/... URL was an ungated route that displayed
+        // nothing useful. show_ui keeps the full admin editing
+        // experience; only the front-end surface is withdrawn.
         register_post_type( 'unit', [
-            'labels'       => self::labels( 'Unit', 'Units' ),
-            'public'       => true,
-            'has_archive'  => 'units',
-            'show_in_rest' => true,
-            'show_in_menu' => 'film-school',
-            'supports'     => [ 'title', 'editor' ],
-            'rewrite'      => [ 'slug' => 'unit', 'with_front' => false ],
+            'labels'              => self::labels( 'Unit', 'Units' ),
+            'public'              => false,
+            'publicly_queryable'  => false,
+            'has_archive'         => false,
+            'exclude_from_search' => true,
+            'show_ui'             => true,
+            'show_in_rest'        => true,
+            'show_in_menu'        => 'film-school',
+            'supports'            => [ 'title', 'editor' ],
+            'rewrite'             => false,
         ] );
 
         register_post_type( 'lesson', [

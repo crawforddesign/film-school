@@ -13,20 +13,20 @@ An admin notice appears on any wp-admin screen if either dependency isn't active
 ## Setup
 
 1. **Install & activate** — upload the `film-school` folder to `wp-content/plugins/`, then activate it from Plugins. This creates the `wp_film_school_quiz_attempts` table, registers the Student role, and grants Administrators the `unlock_all_lessons` capability.
-2. **Flush permalinks** — visit **Settings → Permalinks** and click **Save Changes** (no need to change anything). Required once after activation for `/courses/`, lesson, and unit URLs to work. Also required after any plugin *file update* that isn't a fresh activation — `register_activation_hook` only fires on the deactivated→activated transition, not on an overwritten file, so a manual permalink save is the reliable way to pick up rewrite changes.
+2. **Flush permalinks** — visit **Settings → Permalinks** and click **Save Changes** (no need to change anything). Required once after activation for `/courses/` and lesson URLs to work. Also required after any plugin *file update* that isn't a fresh activation — `register_activation_hook` only fires on the deactivated→activated transition, not on an overwritten file, so a manual permalink save is the reliable way to pick up rewrite changes.
 3. **Build a course** — add a **Course** (Film School → Courses). Add **Units** if the course needs sections, or skip straight to **Lessons** for a flat course — set each lesson's Parent Course (and Parent Unit, if used) and Lesson Order.
 4. **Add a quiz (optional)** — build a Pass/Fail-graded quiz under **Forms**, then link it to a lesson via that lesson's **Quiz** field.
 5. **Add students** — Users → Add New, with role set to **Student**. Film School → Students is a shortcut to the Users list pre-filtered to that role.
 6. **Restrict a course (optional)** — create a **Group** (Film School → Groups), add student members, then set that course's **Restricted To Groups** field. Leave it empty to keep a course open to everyone.
 7. **Build the front end in Elementor**:
-   - Lesson template (Theme Builder → Single, Post Type: Lesson) — drop in `[lesson_quiz]` and `[course_sidebar]`.
+   - Lesson template (Theme Builder → Single, Post Type: Lesson) — drop in `[lesson_quiz]`, `[lesson_complete]`, and `[course_sidebar]`.
    - Course archive (Theme Builder → Archive, Post Type: Course) — a Loop Grid widget on "Current Query" already reflects each student's access, no shortcode needed.
    - A student profile page (a normal Page, e.g. `/my-progress/`) — `[student_progress_summary]`, `[student_quiz_history]`, and `[student_assignments]`.
 
 ## Content model
 
 - **Course** — top-level offering (e.g. "How to Make a Film", "Learning to Drive")
-- **Unit** — optional grouping of lessons within a course. Skip entirely for a flat, short course.
+- **Unit** — optional grouping of lessons within a course. Skip entirely for a flat, short course. Units are **structure only**: they have no front-end URL of their own (`public => false`), since nothing in the plugin renders a unit's contents on a unit page and a unit — not being a lesson — never passes through the lesson gate, which made `/unit/...` an ungated route that displayed nothing. Units appear where they're useful: the admin, and nested inside all three sidebars. **Note:** this removes the `/units/` archive added in v1.2.0. If a Units archive or single template was built in Elementor Theme Builder, it no longer has a URL to attach to — delete it. Lesson archives are unaffected.
 - **Lesson** — always belongs to a course (`parent_course`); belongs to a unit (`parent_unit`) only if the course uses them.
 
 All three are registered as non-hierarchical post types — the relationships live in ACF Post Object fields, not `post_parent`, since a lesson needs to point at either a course or a unit depending on the course's structure.
@@ -39,7 +39,28 @@ Gating requires a logged-in user; anonymous visitors are redirected to log in.
 
 ## Quizzes
 
-Quizzes are built entirely in **Forms** (Gravity Forms) using the Quiz Add-On, graded Pass/Fail. Link a quiz to a lesson via the lesson's **Quiz** field. On submission, the result is recorded in `wp_film_school_quiz_attempts` and — if passed — marks the lesson complete, which unlocks anything gated behind it. Letter-graded quizzes aren't read (no `gquiz_is_pass` value) — keep quiz forms set to Pass/Fail grading.
+Quizzes are built entirely in **Forms** (Gravity Forms) using the Quiz Add-On, graded Pass/Fail. Link a quiz to a lesson via the lesson's **Quiz** field. On submission, the result is recorded in `wp_film_school_quiz_attempts` and — if passed — marks the lesson complete, which unlocks anything gated behind it. Quizzes are genuinely optional: a lesson without one is completed via `[lesson_complete]` instead (see **Lesson completion**). Letter-graded quizzes aren't read (no `gquiz_is_pass` value) — keep quiz forms set to Pass/Fail grading.
+
+## Lesson completion
+
+A lesson is marked complete for a student in one of two ways, and which one applies depends on whether the lesson has a quiz:
+
+- **Quiz lesson** — passing the linked quiz completes it, automatically. No button; a "Mark Complete" button next to a quiz would let a student skip the assessment.
+- **No quiz** — the student clicks **Mark Complete**, from the `[lesson_complete]` shortcode on the lesson template.
+
+Drop `[lesson_complete]` on the lesson template once and it takes care of itself — it renders nothing on lessons that have a quiz, so there's no need for a display condition. It also renders nothing on a public course, where there's no logged-in user to record anything against.
+
+Completion is what drives prerequisite unlocking, the sidebar checkmarks, the progress bars in `[student_progress_summary]`, and the Grade Book — so **a course whose lessons have no quizzes needs this shortcode on the lesson template.** Without it those lessons can never be completed, which means anything gated behind one stays locked and the course can never reach 100%.
+
+The button accepts `label`, `done_label`, and `undo` attributes:
+
+```
+[lesson_complete label="I've watched this" done_label="Watched" undo="no"]
+```
+
+Undo is on by default — a student who clicks by mistake can clear it themselves rather than emailing an admin. Set `undo="no"` if completion should be one-way.
+
+The POST is nonce-protected and re-validates every condition server-side (completable, not locked, correct user) rather than trusting the rendered button, then redirects back to the lesson so a refresh doesn't re-submit.
 
 ## Assignments
 
@@ -62,6 +83,7 @@ Courses, Units, and Lessons all have their **Date** column hidden by default (st
 | Shortcode | Where to use it | What it does |
 |---|---|---|
 | `[lesson_quiz]` | Lesson template only | Renders the quiz linked to the current lesson, if any |
+| `[lesson_complete]` | Lesson template only | "Mark Complete" button for a lesson with no quiz — the completion event for that lesson. Becomes a "Completed" badge with an Undo once clicked. Renders nothing on a quiz-linked lesson or a public course |
 | `[course_sidebar]` | Lesson template only | Collapsible unit/lesson navigator. On a private course: progress checkmarks, current-lesson highlight, locked-lesson indicators. On a public course: plain links only, no login required |
 | `[course_page_sidebar]` | Course template only | Same navigator, rooted at the course itself: the course title as the parent row with its units/lessons nested underneath. Every unit starts open (there's no current lesson to single one out) |
 | `[film_school_sidebar]` | Any page (Film School landing page) | Whole-library navigator: every course the visitor can access, each collapsible, with its units and lessons nested inside. Works logged out (public courses only) |
@@ -76,7 +98,14 @@ All three sidebars share one renderer, so per-lesson state is identical across t
 
 ## Grade Book
 
-**Film School → Grade Book** — a course-scoped roster of every `student`-role user: lessons completed, quiz pass/fail counts, last activity, with a click-through to a per-student lesson-by-lesson breakdown. A second dropdown filters the roster to a specific Group's members. Quiz numbers come from `wp_film_school_quiz_attempts`; lesson completion is computed from user meta per-student rather than in one query — fine at nonprofit-course-platform scale, worth revisiting if that grows an order of magnitude.
+**Film School → Grade Book** — a course-scoped roster of every `student`-role user: lessons completed, quiz pass/fail counts, last activity, with a click-through to a per-student lesson-by-lesson breakdown. A second dropdown filters the roster to a specific Group's members. Two controls sit on top of it:
+
+- **Export CSV** — downloads the roster exactly as filtered on screen (same course, same group, same numbers), one row per student with name, email, lessons completed, percent, quizzes passed/failed, and last activity. The on-screen table and the CSV read from the same function, so they can't drift apart.
+- **Mark Complete / Mark Incomplete** — on a student's lesson-by-lesson breakdown, an override for each lesson. This is the pressure valve for everything that can go wrong with automatic completion: a quiz submitted while logged out, a Gravity Forms hiccup, work done offline, a student who completed a lesson under a different account. Without it the only remedy is editing user meta by hand. Both directions work, and it's the same stored state everything else reads, so a manual completion unlocks prerequisites exactly like an earned one.
+
+Both require the `edit_posts` capability and are nonce-protected.
+
+Quiz numbers come from `wp_film_school_quiz_attempts`; lesson completion is computed from user meta per-student rather than in one query — fine at nonprofit-course-platform scale, worth revisiting if that grows an order of magnitude.
 
 ## Roles
 
@@ -106,6 +135,23 @@ A second tag, **First Lesson URL** (same group), resolves the current Course's f
 
 A third, **Logout URL** (same group), outputs `wp_logout_url()` — use it in a Button widget's Link field for a "Log Out" button, e.g. on the student profile page.
 
+## Styling
+
+All front-end styles live in `assets/css/film-school.css`, enqueued as a normal stylesheet. The sidebars and the Next Up card used to print `<style>` blocks inline from PHP, which meant three different palettes and no way to restyle any of it without editing plugin code.
+
+Colors are CSS custom properties on `:root`. Override them from the theme to restyle the plugin wholesale — no PHP edits, no `!important`:
+
+```css
+:root {
+    --fs-accent: #c8102e;      /* progress bars, checkmarks, current lesson, Mark Complete */
+    --fs-next-accent: #ffae00; /* the Next Up card */
+}
+```
+
+`--fs-accent` and `--fs-next-accent` are deliberately separate: the Next Up card is tuned for the dark section it sits in, and still reads Elementor's own global typography/color variables for the site's fonts. **Note:** the "Continue" button and progress bars in `[student_progress_summary]` were WordPress admin blue (`#2271b1`) before this consolidation and are now `--fs-accent` green, matching the rest of the plugin. Set `--fs-accent: #2271b1;` to put them back.
+
+Sidebar collapse/expand is `assets/js/film-school.js` — one delegated listener, no dependencies, loaded in the footer. It's site-wide rather than per-shortcode because the shortcodes can render late (inside an Elementor widget, a loop item, a popup), too late to enqueue conditionally.
+
 ## Automatic updates
 
 Film School isn't listed on wordpress.org, so it ships with [Plugin Update Checker](https://github.com/YahnisElsts/plugin-update-checker) (vendored at `includes/plugin-update-checker/`), pointed at this repo's GitHub Releases. This is what makes "Update available" and the native "Update Now" button show up on a client site's Plugins page — no manual re-upload/replace needed.
@@ -117,6 +163,12 @@ Film School isn't listed on wordpress.org, so it ships with [Plugin Update Check
 3. Publish it with a title and changelog. No zip needs to be built or attached — when a release has no matching zip asset, the update checker falls back to GitHub's own auto-generated source zip for the tag, which installs correctly since the repo root already matches the plugin's file layout. Attaching a named zip asset (e.g. `film-school.zip`) still works if one is ever needed — a matching asset takes priority over the fallback.
 
 Installed sites will see the update within ~12 hours (WordPress's normal update-check cadence), or immediately if an admin clicks "Check again" on the Updates screen. From there it's a normal one-click "Update Now". Auto-updates are not enabled by default — an admin can turn on "Enable auto-updates" for Film School from that site's Plugins page to apply releases unattended.
+
+## Uninstalling
+
+Deactivating leaves everything alone. **Deleting** the plugin (Plugins → Delete) runs `uninstall.php`, which removes what the plugin itself created: the `wp_film_school_quiz_attempts` table, per-user lesson progress (`_completed_lessons` user meta), the `unlock_all_lessons` capability, the plugin's options, and the Student role — any user still holding that role is moved to Subscriber first, so nobody is left roleless and locked out of their own account.
+
+**Courses, Units, Lessons, and Groups are deliberately left in place.** That's the client's content, and a plugin delete is too easy to trigger by accident for it to take the curriculum with it. Re-installing brings all of it back intact. Quiz attempt history is the exception — it lives in a plugin-owned table whose rows mean nothing without the plugin, so it goes.
 
 ## Not yet built
 
