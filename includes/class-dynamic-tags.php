@@ -28,6 +28,8 @@ class Film_School_Dynamic_Tags {
         require_once FILM_SCHOOL_PATH . 'includes/dynamic-tags/class-logout-url-tag.php';
         require_once FILM_SCHOOL_PATH . 'includes/dynamic-tags/class-lesson-locked-tag.php';
         require_once FILM_SCHOOL_PATH . 'includes/dynamic-tags/class-short-excerpt-tag.php';
+        require_once FILM_SCHOOL_PATH . 'includes/dynamic-tags/class-parent-course-tag.php';
+        require_once FILM_SCHOOL_PATH . 'includes/dynamic-tags/class-parent-course-url-tag.php';
 
         $dynamic_tags_manager->register_group( 'film-school', [ 'title' => 'Film School' ] );
         $dynamic_tags_manager->register( new Film_School_Lesson_Count_Tag() );
@@ -35,5 +37,7 @@ class Film_School_Dynamic_Tags {
         $dynamic_tags_manager->register( new Film_School_Logout_Url_Tag() );
         $dynamic_tags_manager->register( new Film_School_Lesson_Locked_Tag() );
         $dynamic_tags_manager->register( new Film_School_Short_Excerpt_Tag() );
+        $dynamic_tags_manager->register( new Film_School_Parent_Course_Tag() );
+        $dynamic_tags_manager->register( new Film_School_Parent_Course_Url_Tag() );
     }
 }

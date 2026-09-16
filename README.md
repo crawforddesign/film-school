@@ -140,6 +140,10 @@ A third, **Logout URL** (same group), outputs `wp_logout_url()` — use it in a 
 
 A fourth, **Short Excerpt (characters)** (same group), trims the current post down to a character budget — 60 by default, set per-widget in the tag's own **Max characters** control. WordPress only counts excerpt length in words (`excerpt_length`, and Elementor's own Excerpt Length field), which can't express a character cap; card layouts need one, because characters are what decide whether the text wraps another line. It strips shortcodes and block markup before measuring, so the plugin's own `[lesson_quiz]` / `[next_lesson]` never leak into a card, won't split a word, and is multibyte-safe. A hand-written Excerpt wins over generated content but is held to the same budget. **Note:** it reads `post_content`, so a course or lesson laid out in the Elementor editor (content in `_elementor_data`) may have nothing to trim — fill in the post's Excerpt field in that case.
 
+A fifth, **Parent Course** (same group), outputs the title of the Course a Lesson (or Unit) belongs to — use it in a Loop Item on the `/lessons/` archive to label each card with its course. A sixth, **Parent Course URL**, gives that course's permalink for the widget's Link field, so the label can link back.
+
+ACF's own dynamic tag can't do this job: `parent_course` is a `post_object` field declared `'return_format' => 'id'`, so ACF hands Elementor the raw post ID and the card renders a number. Do **not** switch the field to return an object to work around it — ten call sites across this plugin do `(int) get_field( 'parent_course', ... )`, and casting a `WP_Post` to int yields `1`, silently repointing every one of them at whatever post has ID 1.
+
 ## Styling
 
 All front-end styles live in `assets/css/film-school.css`, enqueued as a normal stylesheet. The sidebars and the Next Up card used to print `<style>` blocks inline from PHP, which meant three different palettes and no way to restyle any of it without editing plugin code.
