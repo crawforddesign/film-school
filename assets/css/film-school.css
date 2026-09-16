@@ -10,6 +10,14 @@
  * CSS to restyle the plugin wholesale — no PHP, no !important:
  *
  *   :root { --fs-accent: #c8102e; }
+ *
+ * Exception: the sidebar navigator body (units, chevrons, lesson rows)
+ * reads Elementor's global color/typography variables directly, with
+ * !important, so all three sidebars match the Prize Foundation theme
+ * rather than the plugin's own tokens. Those rules are not overridable
+ * by redefining --fs-* — edit them here, or win on !important. The
+ * .fs-lesson-list--flat and .fs-lesson--done rules carry !important
+ * purely to stay ahead of the shared rules above them.
  */
 
 :root {
@@ -289,14 +297,18 @@ a.fs-course-title:hover,
     flex-shrink: 0;
 }
 .fs-unit--open > .fs-unit-toggle .fs-unit-num {
-    background: var(--fs-accent);
-    color: #fff;
+    background: var(--e-global-color-accent)!important;
+    color: var(--e-global-color-683dc2f)!important;
+    font-size: 16px!important;
 }
 .fs-unit-title {
     flex: 1;
+    font-family: var(--e-global-typography-d841db1-font-family)!important;
+    color: var(--e-global-color-683dc2f)!important;
+    font-size: var(--e-global-typography-207ffc3-font-size)!important;
 }
 .fs-chevron {
-    color: var(--fs-muted);
+    color: var(--e-global-color-faaa632)!important;
     transition: transform .15s ease;
 }
 .fs-unit--open > .fs-unit-toggle .fs-chevron {
@@ -306,10 +318,12 @@ a.fs-course-title:hover,
     list-style: none;
     margin: 0 0 8px 12px;
     padding: 0 0 0 20px;
-    border-left: 2px solid var(--fs-border);
+    border-left: 2px solid var(--e-global-color-4fd93db)!important;
 }
 .fs-lesson-list--flat {
-    border-left: none;
+    /* !important only to answer the one above: a course with no units
+       must not inherit the nesting rule its lessons never sit inside. */
+    border-left: none!important;
     margin-left: 0;
     padding-left: 0;
 }
@@ -320,25 +334,29 @@ a.fs-course-title:hover,
     padding: 8px 0;
 }
 .fs-lesson a {
-    color: var(--fs-text);
+    color: var(--e-global-color-683dc2f)!important;
+    font-family: var(--e-global-typography-5d6e7b2-font-family)!important;
+    font-size: var(--e-global-typography-f51f501-font-size)!important;
     text-decoration: none;
 }
 .fs-lesson--current a {
     font-weight: 700;
-    color: var(--fs-accent);
+    color: var(--e-global-color-accent)!important;
 }
 .fs-lesson--done .fs-icon {
-    color: var(--fs-accent);
+    /* !important only to answer .fs-icon below: the completed checkmark
+       has to stay the accent rather than the default icon color. */
+    color: var(--fs-accent)!important;
 }
 .fs-lesson--locked {
     color: var(--fs-faint);
 }
 .fs-icon {
-    width: 16px;
+    width: 24px!important;
     flex-shrink: 0;
     text-align: center;
-    color: #999;
-    font-size: 13px;
+    color: var(--e-global-color-346e550)!important;
+    font-size: 16px!important;
 }
 
 /* ── Next Up / Previous cards ([next_lesson], [prev_lesson]) ── */
