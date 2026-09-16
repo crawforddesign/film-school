@@ -54,8 +54,12 @@ class Film_School_Shortcodes {
      * next="yes" sends the student to the next lesson after completing,
      * collapsing "Mark Complete" then "Next Up" into one click. Left
      * off by default because the two are independent: Next Up is a
-     * pointer, not a gate, and completing without moving on is what the
-     * last lesson of a course needs.
+     * pointer, not a gate, and a student can move on without finishing.
+     *
+     * On a course's last lesson the button finishes the course rather
+     * than the lesson, so it relabels itself to last_label ("Complete
+     * Course"), and with next="yes" it lands on the student profile
+     * page instead of a next lesson there isn't.
      */
     public static function lesson_complete( $atts = [] ): string {
         if ( ! is_singular( 'lesson' ) || ! is_user_logged_in() ) {
@@ -68,14 +72,8 @@ class Film_School_Shortcodes {
             'done_label' => 'Completed',
             'undo'       => 'yes',
             'next'       => 'no',
+            'last_label' => 'Complete Course',
         ], $atts, 'lesson_complete' );
-
-        // "Mark Complete" reads oddly on a button that also moves you
-        // on, so next="yes" changes the default wording — but only the
-        // default: a label passed explicitly always wins.
-        if ( 'yes' === $atts['next'] && ! isset( $provided['label'] ) ) {
-            $atts['label'] = 'Complete & Continue';
-        }
 
         $lesson_id = get_queried_object_id();
         $user_id   = get_current_user_id();
@@ -93,6 +91,19 @@ class Film_School_Shortcodes {
 
         $is_done = Film_School_Progress::is_lesson_complete( $user_id, $lesson_id );
         $nonce   = Film_School_Progress::NONCE_ACTION;
+        $is_last = null === self::find_next_lesson( $lesson_id );
+
+        // Default wording only — a label passed explicitly always wins.
+        // "Mark Complete" reads oddly on a button that also moves you
+        // on, and on a course's final lesson the button finishes the
+        // course rather than the lesson.
+        if ( ! isset( $provided['label'] ) ) {
+            if ( $is_last ) {
+                $atts['label'] = $atts['last_label'];
+            } elseif ( 'yes' === $atts['next'] ) {
+                $atts['label'] = 'Complete & Continue';
+            }
+        }
 
         ob_start();
         ?>
@@ -247,6 +258,16 @@ class Film_School_Shortcodes {
     }
 
     public static function find_next_lesson( int $current_id ): ?int {
+        static $cache = [];
+
+        if ( ! array_key_exists( $current_id, $cache ) ) {
+            $cache[ $current_id ] = self::compute_next_lesson( $current_id );
+        }
+
+        return $cache[ $current_id ];
+    }
+
+    private static function compute_next_lesson( int $current_id ): ?int {
         $course_id = (int) get_field( 'parent_course', $current_id );
         if ( ! $course_id ) {
             return null;

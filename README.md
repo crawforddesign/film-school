@@ -50,6 +50,10 @@ A lesson is marked complete for a student in one of two ways, and which one appl
 
 By default that leaves them on the same lesson, so finishing and moving on is two clicks (**Mark Complete**, then **Next Up**). `[lesson_complete next="yes"]` collapses it into one: the button reads **Complete & Continue** and lands them on the next lesson. Pass `label` to override that wording. The destination is resolved server-side from the posted flag, never taken from the request, and **Undo** always stays on the current lesson. On the last lesson of a course there is no next, so it stays put and the End of Course card shows.
 
+On a course's **last lesson** the button finishes the course, not the lesson, so it relabels itself to **Complete Course** — override with `last_label`. With `next="yes"` it then redirects to the student profile page rather than a next lesson that doesn't exist, so the student lands on their progress with the course freshly counted. The profile page is whichever published page contains `[student_progress_summary]` (`Film_School_Progress::get_student_profile_page_id()`); with no such page, it stays on the lesson and the End of Course card shows instead.
+
+Both default labels are defaults only — passing `label` explicitly always wins, on every lesson.
+
 It's off by default because completion and navigation are genuinely independent — `[next_lesson]` is a "what comes next" pointer rather than a gate, and a student can move on without completing. The trade-off of leaving it off is the quiet one: someone who only ever clicks Next Up reaches the end of a course at 0%.
 
 Drop `[lesson_complete]` on the lesson template once and it takes care of itself — it renders nothing on lessons that have a quiz, so there's no need for a display condition. It also renders nothing on a public course, where there's no logged-in user to record anything against.

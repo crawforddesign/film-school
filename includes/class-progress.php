@@ -221,10 +221,19 @@ class Film_School_Progress {
             if ( ! empty( $_POST['fs_next'] ) ) {
                 $next_id = Film_School_Shortcodes::find_next_lesson( $lesson_id );
 
-                // No next lesson means this was the last one; staying
-                // put shows the End of Course card.
                 if ( $next_id ) {
                     $redirect = get_permalink( $next_id );
+                } else {
+                    // Last lesson: the course itself is finished, so
+                    // send them to their profile to see it counted.
+                    // Without a profile page configured, stay put and
+                    // let the End of Course card do the talking.
+                    $profile_id  = self::get_student_profile_page_id();
+                    $profile_url = $profile_id ? get_permalink( $profile_id ) : '';
+
+                    if ( $profile_url ) {
+                        $redirect = $profile_url;
+                    }
                 }
             }
         }
