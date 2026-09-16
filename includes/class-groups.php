@@ -22,6 +22,13 @@ class Film_School_Groups {
      * Filtering here rather than in a shortcode means the archive
      * template can still use Elementor's native Loop Grid widget on
      * "Current Query" instead of a fixed custom layout.
+     *
+     * Also supplies the default order, so /courses/ reads the same as
+     * the library navigator. Ordering here rather than through a
+     * widget's Order By matters twice over: a Loop Grid on "Current
+     * Query" has no Order By of its own, and switching it to a custom
+     * query to get one would skip this method entirely — it is gated on
+     * is_main_query() — taking the access filter with it.
      */
     public static function filter_course_archive( WP_Query $query ): void {
         if ( is_admin() || ! $query->is_main_query() || ! $query->is_post_type_archive( 'course' ) ) {
@@ -29,16 +36,28 @@ class Film_School_Groups {
         }
 
         $user_id = get_current_user_id(); // 0 for anonymous visitors.
-        $all_ids = get_posts( [ 'post_type' => 'course', 'numberposts' => -1, 'fields' => 'ids' ] );
-        $visible = array_values( array_filter(
-            $all_ids,
-            fn( $id ) => self::user_can_access_course( $user_id, $id )
-        ) );
+        $visible = [];
+
+        // Already in Course Order, so post__in below carries that order
+        // through to the archive.
+        foreach ( Film_School_Post_Types::ordered_courses() as $course ) {
+            if ( self::user_can_access_course( $user_id, $course->ID ) ) {
+                $visible[] = $course->ID;
+            }
+        }
 
         // post__in with an empty array is ignored by WP_Query (it falls
         // back to "no restriction"), so force a non-matching ID instead
         // to correctly show zero results when nothing's accessible.
         $query->set( 'post__in', $visible ?: [ 0 ] );
+
+        // Default the archive to the same order as the library
+        // navigator. Only when nothing has asked for an order of its
+        // own: an explicit choice — a template's, or Order By on a
+        // widget — still wins, and reaches apply_meta_orderby intact.
+        if ( '' === (string) $query->get( 'orderby' ) ) {
+            $query->set( 'orderby', 'post__in' );
+        }
     }
 
     /**

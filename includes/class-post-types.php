@@ -139,6 +139,36 @@ class Film_School_Post_Types {
         ] );
     }
 
+    /**
+     * Every course, ordered by the Course Order field — the canonical
+     * course order, shared by the library navigator, the progress
+     * summary and the course archive so all three agree.
+     *
+     * Sorted in PHP rather than with meta_key + meta_value_num, because
+     * a meta sort INNER JOINs and silently drops any course with no
+     * course_order row — one imported, or created in code, or never
+     * re-saved. Vanishing from the library is a far worse failure than
+     * sorting last, so a missing value goes to the end and ties fall
+     * back to title.
+     */
+    public static function ordered_courses(): array {
+        $courses = get_posts( [ 'post_type' => 'course', 'numberposts' => -1 ] );
+
+        usort( $courses, static function ( $a, $b ) {
+            $a_raw = get_post_meta( $a->ID, 'course_order', true );
+            $b_raw = get_post_meta( $b->ID, 'course_order', true );
+
+            // No value sorts last, rather than sorting as 0 and jumping
+            // to the front of the list.
+            $a_key = '' === (string) $a_raw ? PHP_INT_MAX : (int) $a_raw;
+            $b_key = '' === (string) $b_raw ? PHP_INT_MAX : (int) $b_raw;
+
+            return ( $a_key <=> $b_key ) ?: strcasecmp( $a->post_title, $b->post_title );
+        } );
+
+        return $courses;
+    }
+
     private static function labels( string $singular, string $plural ): array {
         return [
             'name'          => $plural,
