@@ -140,6 +140,12 @@ Film School isn't listed on wordpress.org, so it ships with [Plugin Update Check
 
 Installed sites will see the update within ~12 hours (WordPress's normal update-check cadence), or immediately if an admin clicks "Check again" on the Updates screen. From there it's a normal one-click "Update Now". Auto-updates are not enabled by default — an admin can turn on "Enable auto-updates" for Film School from that site's Plugins page to apply releases unattended.
 
+## Uninstalling
+
+Deactivating leaves everything alone. **Deleting** the plugin (Plugins → Delete) runs `uninstall.php`, which removes what the plugin itself created: the `wp_film_school_quiz_attempts` table, per-user lesson progress (`_completed_lessons` user meta), the `unlock_all_lessons` capability, the plugin's options, and the Student role — any user still holding that role is moved to Subscriber first, so nobody is left roleless and locked out of their own account.
+
+**Courses, Units, Lessons, and Groups are deliberately left in place.** That's the client's content, and a plugin delete is too easy to trigger by accident for it to take the curriculum with it. Re-installing brings all of it back intact. Quiz attempt history is the exception — it lives in a plugin-owned table whose rows mean nothing without the plugin, so it goes.
+
 ## Not yet built
 
 - Self-service enrollment / open course catalog — intentionally deferred
