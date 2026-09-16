@@ -225,7 +225,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 0;
+    /* Bottom space lives here, not on .fs-course-title: the title is a
+       flex item, so padding on it would offset the course title against
+       the [film_school_sidebar] chevron that sits beside it. */
+    padding: 10px 0 1rem;
 }
 .fs-course-title {
     flex: 1;
@@ -235,7 +238,6 @@
     text-decoration: none;
     font-family: 'veneer', sans-serif;
     font-size: 2.5rem;
-    padding-bottom: 1rem;
 }
 a.fs-course-title:hover,
 .fs-course--current > .fs-course-head .fs-course-title {
@@ -249,7 +251,10 @@ a.fs-course-title:hover,
     cursor: pointer;
 }
 .fs-course-body {
-    padding-top: 6px;
+    /* Explicitly zero: [course_sidebar] renders units straight after the
+       head, so the wrapper the other two sidebars add must not introduce
+       spacing the lesson sidebar doesn't have. */
+    padding-top: 0;
 }
 .fs-course--open > .fs-course-head .fs-chevron {
     transform: rotate(180deg);
