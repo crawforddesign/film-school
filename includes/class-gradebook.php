@@ -13,8 +13,157 @@ defined( 'ABSPATH' ) || exit;
  */
 class Film_School_Gradebook {
 
+    const CAPABILITY   = 'edit_posts';
+    const NONCE_TOGGLE = 'film_school_gradebook_toggle';
+    const NONCE_EXPORT = 'film_school_gradebook_export';
+
     public static function init(): void {
         add_action( 'admin_menu', [ __CLASS__, 'register_menu' ] );
+
+        // Both of these run before any output: the toggle redirects,
+        // the export sends CSV headers. Neither can happen from inside
+        // render(), which is already mid-page.
+        add_action( 'admin_init', [ __CLASS__, 'handle_toggle' ] );
+        add_action( 'admin_init', [ __CLASS__, 'handle_export' ] );
+    }
+
+    /**
+     * Admin override for lesson completion. Every automatic path to
+     * completion can fail a student in a way they can't fix themselves
+     * — a quiz submitted while logged out, a Gravity Forms hiccup, a
+     * lesson finished offline, a student who completed the work under
+     * a different account. Without this the only remedy is editing
+     * user meta by hand.
+     */
+    public static function handle_toggle(): void {
+        if ( empty( $_POST[ self::NONCE_TOGGLE ] ) ) {
+            return;
+        }
+
+        $student_id = absint( $_POST['student_id'] ?? 0 );
+        $lesson_id  = absint( $_POST['lesson_id'] ?? 0 );
+        $nonce      = isset( $_POST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ) : '';
+
+        if ( ! current_user_can( self::CAPABILITY ) || ! $student_id || ! $lesson_id ) {
+            return;
+        }
+
+        if ( ! wp_verify_nonce( $nonce, self::NONCE_TOGGLE . '_' . $student_id . '_' . $lesson_id ) ) {
+            return;
+        }
+
+        if ( Film_School_Progress::is_lesson_complete( $student_id, $lesson_id ) ) {
+            Film_School_Progress::mark_lesson_incomplete( $student_id, $lesson_id );
+        } else {
+            Film_School_Progress::mark_lesson_complete( $student_id, $lesson_id );
+        }
+
+        $redirect = wp_get_referer() ?: admin_url( 'admin.php?page=film-school-gradebook' );
+        wp_safe_redirect( $redirect );
+        exit;
+    }
+
+    /**
+     * CSV of the roster exactly as filtered on screen — same course,
+     * same group, same numbers. Streamed straight to the browser
+     * rather than written anywhere on disk.
+     */
+    public static function handle_export(): void {
+        if ( empty( $_GET['fs_gradebook_export'] ) || ! current_user_can( self::CAPABILITY ) ) {
+            return;
+        }
+
+        $nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+
+        if ( ! wp_verify_nonce( $nonce, self::NONCE_EXPORT ) ) {
+            return;
+        }
+
+        $course_id = absint( $_GET['course_id'] ?? 0 );
+        $group_id  = absint( $_GET['group_id'] ?? 0 );
+
+        if ( ! $course_id ) {
+            return;
+        }
+
+        $rows     = self::roster_rows( $course_id, $group_id );
+        $slug     = sanitize_title( get_the_title( $course_id ) ?: 'course' );
+        $filename = "gradebook-{$slug}-" . gmdate( 'Y-m-d' ) . '.csv';
+
+        nocache_headers();
+        header( 'Content-Type: text/csv; charset=utf-8' );
+        header( 'Content-Disposition: attachment; filename=' . $filename );
+
+        $out = fopen( 'php://output', 'w' );
+
+        // BOM so Excel reads UTF-8 names correctly instead of mangling
+        // any non-ASCII character in a student's name.
+        fwrite( $out, "\xEF\xBB\xBF" );
+
+        fputcsv( $out, [ 'Student', 'Email', 'Lessons Completed', 'Lessons Total', 'Percent', 'Quizzes Passed', 'Quizzes Failed', 'Last Activity' ] );
+
+        foreach ( $rows as $row ) {
+            fputcsv( $out, [
+                $row['name'],
+                $row['email'],
+                $row['done'],
+                $row['total'],
+                $row['pct'],
+                $row['passed'],
+                $row['failed'],
+                $row['last'] ?: '',
+            ] );
+        }
+
+        fclose( $out );
+        exit;
+    }
+
+    /**
+     * One row per student for a course/group — the shared source for
+     * both the on-screen roster and the CSV, so the two can't drift.
+     */
+    private static function roster_rows( int $course_id, int $group_id = 0 ): array {
+        $lesson_ids = wp_list_pluck( self::get_course_lessons( $course_id ), 'ID' );
+        $total      = count( $lesson_ids );
+        $id_list    = implode( ',', array_map( 'absint', $lesson_ids ) ?: [ 0 ] );
+        $students   = get_users( [ 'role' => 'student' ] );
+
+        if ( $group_id ) {
+            $member_ids = array_map( 'absint', (array) get_field( 'members', $group_id ) );
+            $students   = array_filter( $students, fn( $student ) => in_array( $student->ID, $member_ids, true ) );
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'film_school_quiz_attempts';
+        $rows  = [];
+
+        foreach ( $students as $student ) {
+            $completed = Film_School_Progress::get_completed_lessons( $student->ID );
+            $done      = count( array_intersect( $lesson_ids, $completed ) );
+
+            $rows[] = [
+                'id'     => (int) $student->ID,
+                'name'   => $student->display_name,
+                'email'  => $student->user_email,
+                'done'   => $done,
+                'total'  => $total,
+                'pct'    => $total ? (int) round( $done / $total * 100 ) : 0,
+                'passed' => (int) $wpdb->get_var( $wpdb->prepare(
+                    "SELECT COUNT(DISTINCT lesson_id) FROM {$table} WHERE user_id = %d AND passed = 1 AND lesson_id IN ({$id_list})",
+                    $student->ID
+                ) ),
+                'failed' => (int) $wpdb->get_var( $wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$table} WHERE user_id = %d AND passed = 0 AND lesson_id IN ({$id_list})",
+                    $student->ID
+                ) ),
+                'last'   => $wpdb->get_var( $wpdb->prepare(
+                    "SELECT MAX(created_at) FROM {$table} WHERE user_id = %d", $student->ID
+                ) ),
+            ];
+        }
+
+        return $rows;
     }
 
     public static function register_menu(): void {
@@ -78,6 +227,12 @@ class Film_School_Gradebook {
                     </option>
                 <?php endforeach; ?>
             </select>
+            <a class="fs-abtn fs-abtn-secondary" href="<?php echo esc_url( wp_nonce_url( add_query_arg( [
+                'page'                => 'film-school-gradebook',
+                'course_id'           => $selected_course,
+                'group_id'            => $selected_group,
+                'fs_gradebook_export' => 1,
+            ], admin_url( 'admin.php' ) ), self::NONCE_EXPORT ) ); ?>">Export CSV</a>
         </form>
         <?php
     }
@@ -94,19 +249,7 @@ class Film_School_Gradebook {
     }
 
     private static function render_roster( int $course_id, int $group_id = 0 ): void {
-        $lessons    = self::get_course_lessons( $course_id );
-        $lesson_ids = wp_list_pluck( $lessons, 'ID' );
-        $total      = count( $lesson_ids );
-        $id_list    = implode( ',', array_map( 'absint', $lesson_ids ) ?: [ 0 ] );
-
-        global $wpdb;
-        $table    = $wpdb->prefix . 'film_school_quiz_attempts';
-        $students = get_users( [ 'role' => 'student' ] );
-
-        if ( $group_id ) {
-            $member_ids = array_map( 'absint', (array) get_field( 'members', $group_id ) );
-            $students   = array_filter( $students, fn( $student ) => in_array( $student->ID, $member_ids, true ) );
-        }
+        $rows = self::roster_rows( $course_id, $group_id );
         ?>
         <div class="fs-table-wrap">
             <table class="fs-table">
@@ -121,37 +264,21 @@ class Film_School_Gradebook {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if ( ! $students ) : ?>
+                    <?php if ( ! $rows ) : ?>
                         <tr><td colspan="6" class="fs-empty"><?php echo $group_id ? 'No students in this group.' : 'No students yet.'; ?></td></tr>
                     <?php endif; ?>
-                    <?php foreach ( $students as $student ) :
-                        $completed = Film_School_Progress::get_completed_lessons( $student->ID );
-                        $done      = count( array_intersect( $lesson_ids, $completed ) );
-                        $pct       = $total ? (int) round( $done / $total * 100 ) : 0;
-
-                        $passed = (int) $wpdb->get_var( $wpdb->prepare(
-                            "SELECT COUNT(DISTINCT lesson_id) FROM {$table} WHERE user_id = %d AND passed = 1 AND lesson_id IN ({$id_list})",
-                            $student->ID
-                        ) );
-                        $failed = (int) $wpdb->get_var( $wpdb->prepare(
-                            "SELECT COUNT(*) FROM {$table} WHERE user_id = %d AND passed = 0 AND lesson_id IN ({$id_list})",
-                            $student->ID
-                        ) );
-                        $last = $wpdb->get_var( $wpdb->prepare(
-                            "SELECT MAX(created_at) FROM {$table} WHERE user_id = %d", $student->ID
-                        ) );
-                        ?>
+                    <?php foreach ( $rows as $row ) : ?>
                         <tr>
                             <td>
-                                <a href="<?php echo esc_url( add_query_arg( [ 'student_id' => $student->ID ] ) ); ?>">
-                                    <?php echo esc_html( $student->display_name ); ?>
+                                <a href="<?php echo esc_url( add_query_arg( [ 'student_id' => $row['id'] ] ) ); ?>">
+                                    <?php echo esc_html( $row['name'] ); ?>
                                 </a>
                             </td>
-                            <td><?php echo esc_html( "{$done} of {$total}" ); ?></td>
-                            <td><?php echo esc_html( $pct ); ?>%</td>
-                            <td><?php echo esc_html( $passed ); ?></td>
-                            <td><?php echo esc_html( $failed ); ?></td>
-                            <td><?php echo $last ? esc_html( human_time_diff( strtotime( $last ) ) . ' ago' ) : '—'; ?></td>
+                            <td><?php echo esc_html( "{$row['done']} of {$row['total']}" ); ?></td>
+                            <td><?php echo esc_html( $row['pct'] ); ?>%</td>
+                            <td><?php echo esc_html( $row['passed'] ); ?></td>
+                            <td><?php echo esc_html( $row['failed'] ); ?></td>
+                            <td><?php echo $row['last'] ? esc_html( human_time_diff( strtotime( $row['last'] ) ) . ' ago' ) : '&mdash;'; ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -179,7 +306,7 @@ class Film_School_Gradebook {
         </div>
         <div class="fs-table-wrap">
             <table class="fs-table">
-                <thead><tr><th>Lesson</th><th>Status</th><th>Quiz</th></tr></thead>
+                <thead><tr><th>Lesson</th><th>Status</th><th>Quiz</th><th>Action</th></tr></thead>
                 <tbody>
                 <?php foreach ( $lessons as $lesson ) :
                     $done      = in_array( $lesson->ID, $completed, true );
@@ -206,6 +333,16 @@ class Film_School_Gradebook {
                             <?php else : ?>
                                 &mdash;
                             <?php endif; ?>
+                        </td>
+                        <td>
+                            <form method="post" class="fs-gradebook-toggle">
+                                <?php wp_nonce_field( self::NONCE_TOGGLE . '_' . $student_id . '_' . $lesson->ID ); ?>
+                                <input type="hidden" name="student_id" value="<?php echo esc_attr( $student_id ); ?>">
+                                <input type="hidden" name="lesson_id" value="<?php echo esc_attr( $lesson->ID ); ?>">
+                                <button type="submit" class="fs-abtn fs-abtn-secondary" name="<?php echo esc_attr( self::NONCE_TOGGLE ); ?>" value="1">
+                                    <?php echo $done ? 'Mark Incomplete' : 'Mark Complete'; ?>
+                                </button>
+                            </form>
                         </td>
                     </tr>
                 <?php endforeach; ?>

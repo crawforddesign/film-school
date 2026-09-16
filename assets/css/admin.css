@@ -553,3 +553,8 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Grade Book completion override ── */
+.fs-gradebook-toggle {
+  margin: 0;
+}

@@ -98,7 +98,14 @@ All three sidebars share one renderer, so per-lesson state is identical across t
 
 ## Grade Book
 
-**Film School → Grade Book** — a course-scoped roster of every `student`-role user: lessons completed, quiz pass/fail counts, last activity, with a click-through to a per-student lesson-by-lesson breakdown. A second dropdown filters the roster to a specific Group's members. Quiz numbers come from `wp_film_school_quiz_attempts`; lesson completion is computed from user meta per-student rather than in one query — fine at nonprofit-course-platform scale, worth revisiting if that grows an order of magnitude.
+**Film School → Grade Book** — a course-scoped roster of every `student`-role user: lessons completed, quiz pass/fail counts, last activity, with a click-through to a per-student lesson-by-lesson breakdown. A second dropdown filters the roster to a specific Group's members. Two controls sit on top of it:
+
+- **Export CSV** — downloads the roster exactly as filtered on screen (same course, same group, same numbers), one row per student with name, email, lessons completed, percent, quizzes passed/failed, and last activity. The on-screen table and the CSV read from the same function, so they can't drift apart.
+- **Mark Complete / Mark Incomplete** — on a student's lesson-by-lesson breakdown, an override for each lesson. This is the pressure valve for everything that can go wrong with automatic completion: a quiz submitted while logged out, a Gravity Forms hiccup, work done offline, a student who completed a lesson under a different account. Without it the only remedy is editing user meta by hand. Both directions work, and it's the same stored state everything else reads, so a manual completion unlocks prerequisites exactly like an earned one.
+
+Both require the `edit_posts` capability and are nonce-protected.
+
+Quiz numbers come from `wp_film_school_quiz_attempts`; lesson completion is computed from user meta per-student rather than in one query — fine at nonprofit-course-platform scale, worth revisiting if that grows an order of magnitude.
 
 ## Roles
 
