@@ -542,15 +542,17 @@ class Film_School_Shortcodes {
     }
 
     /**
-     * The course the current page sits in — whether that's the course
-     * itself, one of its units, or one of its lessons. 0 anywhere else.
+     * The course the current page sits in — the course itself, or the
+     * course a lesson belongs to. 0 anywhere else. Units aren't checked
+     * because they're no longer publicly queryable; there's no unit URL
+     * to be on.
      */
     private static function current_course_id(): int {
         if ( is_singular( 'course' ) ) {
             return get_queried_object_id();
         }
 
-        if ( is_singular( [ 'unit', 'lesson' ] ) ) {
+        if ( is_singular( 'lesson' ) ) {
             return (int) get_field( 'parent_course', get_queried_object_id() );
         }
 

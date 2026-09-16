@@ -13,7 +13,7 @@ An admin notice appears on any wp-admin screen if either dependency isn't active
 ## Setup
 
 1. **Install & activate** — upload the `film-school` folder to `wp-content/plugins/`, then activate it from Plugins. This creates the `wp_film_school_quiz_attempts` table, registers the Student role, and grants Administrators the `unlock_all_lessons` capability.
-2. **Flush permalinks** — visit **Settings → Permalinks** and click **Save Changes** (no need to change anything). Required once after activation for `/courses/`, lesson, and unit URLs to work. Also required after any plugin *file update* that isn't a fresh activation — `register_activation_hook` only fires on the deactivated→activated transition, not on an overwritten file, so a manual permalink save is the reliable way to pick up rewrite changes.
+2. **Flush permalinks** — visit **Settings → Permalinks** and click **Save Changes** (no need to change anything). Required once after activation for `/courses/` and lesson URLs to work. Also required after any plugin *file update* that isn't a fresh activation — `register_activation_hook` only fires on the deactivated→activated transition, not on an overwritten file, so a manual permalink save is the reliable way to pick up rewrite changes.
 3. **Build a course** — add a **Course** (Film School → Courses). Add **Units** if the course needs sections, or skip straight to **Lessons** for a flat course — set each lesson's Parent Course (and Parent Unit, if used) and Lesson Order.
 4. **Add a quiz (optional)** — build a Pass/Fail-graded quiz under **Forms**, then link it to a lesson via that lesson's **Quiz** field.
 5. **Add students** — Users → Add New, with role set to **Student**. Film School → Students is a shortcut to the Users list pre-filtered to that role.
@@ -26,7 +26,7 @@ An admin notice appears on any wp-admin screen if either dependency isn't active
 ## Content model
 
 - **Course** — top-level offering (e.g. "How to Make a Film", "Learning to Drive")
-- **Unit** — optional grouping of lessons within a course. Skip entirely for a flat, short course.
+- **Unit** — optional grouping of lessons within a course. Skip entirely for a flat, short course. Units are **structure only**: they have no front-end URL of their own (`public => false`), since nothing in the plugin renders a unit's contents on a unit page and a unit — not being a lesson — never passes through the lesson gate, which made `/unit/...` an ungated route that displayed nothing. Units appear where they're useful: the admin, and nested inside all three sidebars. **Note:** this removes the `/units/` archive added in v1.2.0. If a Units archive or single template was built in Elementor Theme Builder, it no longer has a URL to attach to — delete it. Lesson archives are unaffected.
 - **Lesson** — always belongs to a course (`parent_course`); belongs to a unit (`parent_unit`) only if the course uses them.
 
 All three are registered as non-hierarchical post types — the relationships live in ACF Post Object fields, not `post_parent`, since a lesson needs to point at either a course or a unit depending on the course's structure.
